@@ -9,3 +9,5 @@
 - "Notify me when the lecture recording for week 7 is posted"
     - Agent should be able to send email notification when new post is made with lecture recording link
     - Could generalize to "Notify me when there's a due date extension" for any assignment
+- General/Continuous: Create markdown formatted report on all discussion activity (group by homework, project, exam)
+    - Could store in structured format (YAML/JSON) for easy parsing
