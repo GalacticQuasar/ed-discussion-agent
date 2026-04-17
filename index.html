@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -32,11 +32,6 @@
         h1 {
             color: #333;
             font-size: 24px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
         }
 
         button {
@@ -57,52 +52,219 @@
             background: #0052a3;
         }
 
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-
         .card {
             background: white;
             border-radius: 8px;
             padding: 20px;
+            margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
         }
 
         .card-id {
             color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .card-type {
+            padding: 4px 12px;
+            background: #e8f0fe;
+            color: #1a73e8;
+            border-radius: 4px;
             font-size: 12px;
-            margin-bottom: 8px;
+            font-weight: 500;
         }
 
         .card-title {
             color: #333;
-            font-size: 18px;
-            margin-bottom: 12px;
+            font-size: 20px;
+            margin-bottom: 16px;
             line-height: 1.4;
         }
 
-        .card-category {
-            display: inline-block;
+        .card-section {
+            margin-bottom: 16px;
+        }
+
+        .card-section-title {
+            color: #666;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-content {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .card-content p {
+            margin-bottom: 8px;
+        }
+
+        .card-content pre {
+            background: #f8f8f8;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+
+        .card-content code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .card-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            color: #666;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .detail-value.bool-true {
+            color: #2e7d32;
+        }
+
+        .detail-value.bool-false {
+            color: #9e9e9e;
+        }
+
+        .card-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .category-tag {
             padding: 4px 10px;
             background: #e8f0fe;
             color: #1a73e8;
             border-radius: 4px;
             font-size: 12px;
-            margin-bottom: 12px;
         }
 
-        .card-content {
-            color: #555;
+        .category-tag.sub {
+            background: #e6f4ea;
+            color: #1e8e3e;
+        }
+
+        .category-tag.subsub {
+            background: #fce8e6;
+            color: #d93025;
+        }
+
+        .card-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            color: #333;
             font-size: 14px;
-            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        .user-email {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .timestamps {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.answered {
+            background: #e6f4ea;
+            color: #1e8e3e;
+        }
+
+        .status-badge.pinned {
+            background: #fef7e0;
+            color: #b06000;
+        }
+
+        .status-badge.locked {
+            background: #fce8e6;
+            color: #d93025;
+        }
+
+        .status-badge.staff {
+            background: #e8f0fe;
+            color: #1a73e8;
         }
 
         .loading {
@@ -130,9 +292,7 @@
     <div class="container">
         <header>
             <h1>CS 250 Ed Discussion</h1>
-            <div class="controls">
-                <button class="refresh-btn" onclick="fetchThreads()">Refresh</button>
-            </div>
+            <button class="refresh-btn" onclick="fetchThreads()">Refresh</button>
         </header>
         <div id="content">
             <div class="loading">Loading...</div>
@@ -160,18 +320,167 @@
                     return;
                 }
 
-                content.innerHTML = '<div class="cards-grid">' + 
-                    threads.map(thread => `
-                        <div class="card">
-                            <div class="card-id">#${thread.id}</div>
-                            <div class="card-title">${escapeHtml(thread.title)}</div>
-                            <span class="card-category">${escapeHtml(thread.category)}</span>
-                            <div class="card-content">${escapeHtml(thread.document || '')}</div>
-                        </div>
-                    `).join('') + 
-                    '</div>';
+                content.innerHTML = threads.map(thread => renderCard(thread)).join('');
             } catch (error) {
                 content.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function renderCard(thread) {
+            const user = thread.user || {};
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-id">#${thread.id}</span>
+                        <span class="card-type">${thread.type || 'discussion'}</span>
+                    </div>
+
+                    <div class="card-title">${escapeHtml(thread.title)}</div>
+
+                    ${renderCategories(thread)}
+
+                    ${renderContent(thread.content || thread.document)}
+
+                    ${renderDetails(thread)}
+
+                    ${renderStatusBadges(thread)}
+
+                    ${renderUser(user)}
+
+                    ${renderTimestamps(thread)}
+                </div>
+            `;
+        }
+
+        function renderCategories(thread) {
+            const cats = [];
+            if (thread.category) cats.push(`<span class="category-tag">${escapeHtml(thread.category)}</span>`);
+            if (thread.subcategory) cats.push(`<span class="category-tag sub">${escapeHtml(thread.subcategory)}</span>`);
+            if (thread.subsubcategory) cats.push(`<span class="category-tag subsub">${escapeHtml(thread.subsubcategory)}</span>`);
+
+            if (cats.length === 0) return '';
+            return `<div class="card-categories">${cats.join('')}</div>`;
+        }
+
+        function renderContent(content) {
+            if (!content) return '';
+            return `
+                <div class="card-section">
+                    <div class="card-section-title">Content</div>
+                    <div class="card-content">${content}</div>
+                </div>
+            `;
+        }
+
+        function renderDetails(thread) {
+            const details = [
+                { label: 'Votes', value: thread.vote_count },
+                { label: 'Replies', value: thread.reply_count },
+                { label: 'Views', value: thread.view_count },
+                { label: 'Unique Views', value: thread.unique_view_count },
+                { label: 'Flags', value: thread.flag_count },
+                { label: 'Stars', value: thread.star_count },
+                { label: 'Unresolved', value: thread.unresolved_count },
+                { label: 'New Replies', value: thread.new_reply_count },
+                { label: 'Course ID', value: thread.course_id },
+                { label: 'Original ID', value: thread.original_id },
+                { label: 'User ID', value: thread.user_id },
+                { label: 'Anonymous ID', value: thread.anonymous_id },
+                { label: 'Editor ID', value: thread.editor_id },
+                { label: 'Accepted ID', value: thread.accepted_id },
+                { label: 'Duplicate ID', value: thread.duplicate_id },
+                { label: 'Number', value: thread.number },
+            ];
+
+            const bools = [
+                { label: 'Locked', value: thread.is_locked },
+                { label: 'Pinned', value: thread.is_pinned },
+                { label: 'Private', value: thread.is_private },
+                { label: 'Endorsed', value: thread.is_endorsed },
+                { label: 'Answered', value: thread.is_answered },
+                { label: 'Student Answered', value: thread.is_student_answered },
+                { label: 'Staff Answered', value: thread.is_staff_answered },
+                { label: 'Archived', value: thread.is_archived },
+                { label: 'Anonymous', value: thread.is_anonymous },
+                { label: 'Megathread', value: thread.is_megathread },
+                { label: 'Seen', value: thread.is_seen },
+                { label: 'Starred', value: thread.is_starred },
+                { label: 'Watched', value: thread.is_watched },
+                { label: 'Anonymous Comments', value: thread.anonymous_comments },
+            ];
+
+            const detailsHtml = details.map(d =>
+                `<div class="detail-item">
+                    <span class="detail-label">${d.label}</span>
+                    <span class="detail-value">${d.value !== undefined && d.value !== null ? d.value : '-'}</span>
+                </div>`
+            ).join('');
+
+            const boolsHtml = bools.map(b =>
+                `<div class="detail-item">
+                    <span class="detail-label">${b.label}</span>
+                    <span class="detail-value ${b.value ? 'bool-true' : 'bool-false'}">${b.value ? 'Yes' : 'No'}</span>
+                </div>`
+            ).join('');
+
+            return `
+                <div class="card-details">${detailsHtml}</div>
+                <div class="card-details">${boolsHtml}</div>
+            `;
+        }
+
+        function renderStatusBadges(thread) {
+            const badges = [];
+            if (thread.is_answered) badges.push('<span class="status-badge answered">Answered</span>');
+            if (thread.is_pinned) badges.push('<span class="status-badge pinned">Pinned</span>');
+            if (thread.is_locked) badges.push('<span class="status-badge locked">Locked</span>');
+            if (thread.is_staff_answered) badges.push('<span class="status-badge staff">Staff Answered</span>');
+            if (thread.is_student_answered) badges.push('<span class="status-badge answered">Student Answered</span>');
+            if (thread.approved_status && thread.approved_status !== 'none') {
+                badges.push(`<span class="status-badge">${thread.approved_status}</span>`);
+            }
+
+            if (badges.length === 0) return '';
+            return `<div class="status-badges">${badges.join('')}</div>`;
+        }
+
+        function renderUser(user) {
+            if (!user || Object.keys(user).length === 0) return '';
+
+            const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+            return `
+                <div class="card-section">
+                    <div class="card-section-title">User</div>
+                    <div class="card-user">
+                        <div class="user-avatar">${initials || '?'}</div>
+                        <div class="user-info">
+                            <div class="user-name">${escapeHtml(user.first_name || '')} ${escapeHtml(user.last_name || '')}</div>
+                            <div class="user-email">${escapeHtml(user.email || user.email_address || '')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTimestamps(thread) {
+            const ts = [];
+            if (thread.created_at) ts.push(`<span>Created: ${formatDate(thread.created_at)}</span>`);
+            if (thread.updated_at) ts.push(`<span>Updated: ${formatDate(thread.updated_at)}</span>`);
+            if (thread.pinned_at) ts.push(`<span>Pinned: ${formatDate(thread.pinned_at)}</span>`);
+            if (thread.deleted_at) ts.push(`<span>Deleted: ${formatDate(thread.deleted_at)}</span>`);
+
+            if (ts.length === 0) return '';
+            return `<div class="timestamps">${ts.join('')}</div>`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleString();
+            } catch {
+                return dateStr;
             }
         }
 
