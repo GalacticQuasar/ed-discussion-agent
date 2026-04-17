@@ -37,9 +37,9 @@ if response.ok:
 else:
     print("Error:", response.text)
 
-print("--------------------OUTPUT--------------------")
+# print("--------------------OUTPUT--------------------")
 for thread in data["threads"]:
-    print("--------------------OUTPUT--------------------")
+    print(f"--------------------{thread['id']}--------------------")
     print(thread["title"], thread["id"])
     print("\tCategory:", thread["category"])
     print("\t", thread["document"])
