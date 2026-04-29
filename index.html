@@ -15,6 +15,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .container {
@@ -34,6 +35,34 @@
             font-size: 24px;
         }
 
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .header-nav a {
+            color: #0066cc;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .header-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .header-nav .separator {
+            color: #ccc;
+        }
+
         button {
             padding: 10px 20px;
             border: none;
@@ -43,15 +72,176 @@
             transition: background 0.2s;
         }
 
-        .refresh-btn {
+        .btn-primary {
             background: #0066cc;
             color: white;
         }
 
-        .refresh-btn:hover {
+        .btn-primary:hover {
             background: #0052a3;
         }
 
+        .btn-primary:disabled {
+            background: #99c2eb;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #ccc;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Login view */
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .login-card h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .login-card .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #0066cc;
+            box-shadow: 0 0 0 2px rgba(0,102,204,0.15);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            margin-top: 8px;
+        }
+
+        .form-error {
+            color: #d32f2f;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        /* Course selection view */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .course-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.15s;
+            border: 2px solid transparent;
+        }
+
+        .course-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            border-color: #0066cc;
+        }
+
+        .course-code {
+            color: #0066cc;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .course-name {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .course-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .course-status.active {
+            background: #e6f4ea;
+            color: #1e8e3e;
+        }
+
+        .course-status.archived {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* Threads view */
         .card {
             background: white;
             border-radius: 8px;
@@ -286,68 +476,303 @@
             padding: 40px;
             color: #666;
         }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            z-index: 1000;
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>CS 252 Ed Discussion</h1>
-            <button class="refresh-btn" onclick="fetchThreads()">Refresh</button>
-        </header>
-        <div id="content">
-            <div class="loading">Loading...</div>
+        <!-- Login View -->
+        <div id="login-view" class="view">
+            <div class="login-wrapper">
+                <div class="login-card">
+                    <h1>Ed Discussion</h1>
+                    <p class="subtitle">Sign in with your Ed account</p>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required placeholder="you@university.edu" autocomplete="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" required placeholder="Your Ed password" autocomplete="current-password">
+                        </div>
+                        <div id="login-error" class="form-error" style="display:none;"></div>
+                        <button type="submit" class="btn-primary login-btn" id="login-btn">Sign In</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Selection View -->
+        <div id="courses-view" class="view">
+            <header>
+                <h1>Your Courses</h1>
+                <div class="header-actions">
+                    <button class="btn-secondary btn-sm" onclick="refreshCourses()">Refresh</button>
+                    <button class="btn-danger btn-sm" onclick="logout()">Logout</button>
+                </div>
+            </header>
+            <div id="courses-content">
+                <div class="loading">Loading courses...</div>
+            </div>
+        </div>
+
+        <!-- Threads View -->
+        <div id="threads-view" class="view">
+            <header>
+                <h1 id="threads-heading">Threads</h1>
+                <div class="header-actions">
+                    <div class="header-nav">
+                        <a onclick="showView('courses')">Courses</a>
+                        <span class="separator">/</span>
+                        <span id="breadcrumb-course"></span>
+                    </div>
+                    <button class="btn-secondary btn-sm" onclick="refreshThreads()">Refresh</button>
+                    <button class="btn-danger btn-sm" onclick="logout()">Logout</button>
+                </div>
+            </header>
+            <div id="threads-content">
+                <div class="loading">Loading...</div>
+            </div>
         </div>
     </div>
 
+    <div id="toast" class="toast"></div>
+
     <script>
-        async function fetchThreads() {
-            const content = document.getElementById('content');
-            content.innerHTML = '<div class="loading">Loading...</div>';
+        let currentCourseId = null;
+        let currentCourseCode = null;
+
+        function getStoredAuth() {
+            const token = localStorage.getItem('ed_token');
+            const email = localStorage.getItem('ed_email');
+            const password = localStorage.getItem('ed_password');
+            return { token, email, password };
+        }
+
+        function setStoredAuth(token, email, password) {
+            localStorage.setItem('ed_token', token);
+            localStorage.setItem('ed_email', email);
+            localStorage.setItem('ed_password', password);
+        }
+
+        function clearStoredAuth() {
+            localStorage.removeItem('ed_token');
+            localStorage.removeItem('ed_email');
+            localStorage.removeItem('ed_password');
+        }
+
+        function showToast(message, duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, duration);
+        }
+
+        async function authedFetch(url, options = {}) {
+            const { token } = getStoredAuth();
+            options.headers = options.headers || {};
+            options.headers['X-Token'] = token;
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                const data = await response.json().catch(() => ({}));
+                if (data.error === 'TOKEN_EXPIRED') {
+                    const newToken = await refreshToken();
+                    if (newToken) {
+                        options.headers['X-Token'] = newToken;
+                        return fetch(url, options);
+                    } else {
+                        showView('login');
+                        clearStoredAuth();
+                        throw new Error('Session expired. Please log in again.');
+                    }
+                }
+            }
+            return response;
+        }
+
+        async function refreshToken() {
+            const { email, password } = getStoredAuth();
+            if (!email || !password) return null;
 
             try {
-                const response = await fetch('/api/threads');
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('ed_token', data.token);
+                    showToast('Session refreshed');
+                    return data.token;
+                }
+            } catch {}
+            return null;
+        }
+
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewName + '-view').classList.add('active');
+        }
+
+        // --- Login ---
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Signing in...';
+            loginError.style.display = 'none';
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
                 const data = await response.json();
 
                 if (!response.ok) {
-                    content.innerHTML = `<div class="error">Error: ${data.error || 'Failed to fetch'}</div>`;
+                    loginError.textContent = data.error || 'Login failed';
+                    loginError.style.display = 'block';
+                    return;
+                }
+
+                setStoredAuth(data.token, email, password);
+                showView('courses');
+                fetchCourses();
+            } catch (err) {
+                loginError.textContent = err.message || 'Network error';
+                loginError.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Sign In';
+            }
+        });
+
+        // --- Courses ---
+        async function fetchCourses() {
+            const content = document.getElementById('courses-content');
+            content.innerHTML = '<div class="loading">Loading courses...</div>';
+
+            try {
+                const response = await authedFetch('/api/courses');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    content.innerHTML = `<div class="error">Error: ${data.error || 'Failed to fetch courses'}</div>`;
+                    return;
+                }
+
+                const courses = (data.courses || []).sort((a, b) => {
+                    if (a.status === 'active' && b.status !== 'active') return -1;
+                    if (a.status !== 'active' && b.status === 'active') return 1;
+                    return 0;
+                });
+                if (courses.length === 0) {
+                    content.innerHTML = '<div class="empty">No courses found</div>';
+                    return;
+                }
+
+                content.innerHTML = '<div class="course-grid">' + courses.map(c => `
+                    <div class="course-card" onclick="selectCourse(${c.id}, '${escapeHtml(c.code)}')">
+                        <div class="course-code">${escapeHtml(c.code)}</div>
+                        <div class="course-name">${escapeHtml(c.name)}</div>
+                        <span class="course-status ${c.status === 'active' ? 'active' : 'archived'}">${c.status || 'unknown'}</span>
+                    </div>
+                `).join('') + '</div>';
+            } catch (err) {
+                content.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        }
+
+        function refreshCourses() {
+            fetchCourses();
+        }
+
+        function selectCourse(courseId, courseCode) {
+            currentCourseId = courseId;
+            currentCourseCode = courseCode;
+            document.getElementById('threads-heading').textContent = courseCode + ' — Threads';
+            document.getElementById('breadcrumb-course').textContent = courseCode;
+            showView('threads');
+            fetchThreads();
+        }
+
+        // --- Threads ---
+        async function fetchThreads() {
+            const content = document.getElementById('threads-content');
+            content.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await authedFetch(`/api/threads?course_id=${currentCourseId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    content.innerHTML = `<div class="error">Error: ${data.error || 'Failed to fetch threads'}</div>`;
                     return;
                 }
 
                 const threads = data.threads || [];
-
                 if (threads.length === 0) {
                     content.innerHTML = '<div class="empty">No discussions found</div>';
                     return;
                 }
 
                 content.innerHTML = threads.map(thread => renderCard(thread)).join('');
-            } catch (error) {
-                content.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } catch (err) {
+                content.innerHTML = `<div class="error">Error: ${err.message}</div>`;
             }
+        }
+
+        function refreshThreads() {
+            fetchThreads();
         }
 
         function renderCard(thread) {
             const user = thread.user || {};
-
             return `
                 <div class="card">
                     <div class="card-header">
                         <span class="card-id">#${thread.id}</span>
                         <span class="card-type">${thread.type || 'discussion'}</span>
                     </div>
-
                     <div class="card-title">${escapeHtml(thread.title)}</div>
-
                     ${renderCategories(thread)}
-
                     ${renderContent(thread.content || thread.document)}
-
                     ${renderDetails(thread)}
-
                     ${renderStatusBadges(thread)}
-
                     ${renderUser(user)}
-
                     ${renderTimestamps(thread)}
                 </div>
             `;
@@ -358,7 +783,6 @@
             if (thread.category) cats.push(`<span class="category-tag">${escapeHtml(thread.category)}</span>`);
             if (thread.subcategory) cats.push(`<span class="category-tag sub">${escapeHtml(thread.subcategory)}</span>`);
             if (thread.subsubcategory) cats.push(`<span class="category-tag subsub">${escapeHtml(thread.subsubcategory)}</span>`);
-
             if (cats.length === 0) return '';
             return `<div class="card-categories">${cats.join('')}</div>`;
         }
@@ -440,14 +864,12 @@
             if (thread.approved_status && thread.approved_status !== 'none') {
                 badges.push(`<span class="status-badge">${thread.approved_status}</span>`);
             }
-
             if (badges.length === 0) return '';
             return `<div class="status-badges">${badges.join('')}</div>`;
         }
 
         function renderUser(user) {
             if (!user || Object.keys(user).length === 0) return '';
-
             const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
             return `
                 <div class="card-section">
@@ -469,7 +891,6 @@
             if (thread.updated_at) ts.push(`<span>Updated: ${formatDate(thread.updated_at)}</span>`);
             if (thread.pinned_at) ts.push(`<span>Pinned: ${formatDate(thread.pinned_at)}</span>`);
             if (thread.deleted_at) ts.push(`<span>Deleted: ${formatDate(thread.deleted_at)}</span>`);
-
             if (ts.length === 0) return '';
             return `<div class="timestamps">${ts.join('')}</div>`;
         }
@@ -477,8 +898,7 @@
         function formatDate(dateStr) {
             if (!dateStr) return '';
             try {
-                const date = new Date(dateStr);
-                return date.toLocaleString();
+                return new Date(dateStr).toLocaleString();
             } catch {
                 return dateStr;
             }
@@ -491,7 +911,27 @@
             return div.innerHTML;
         }
 
-        fetchThreads();
+        // --- Logout ---
+        function logout() {
+            clearStoredAuth();
+            currentCourseId = null;
+            currentCourseCode = null;
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('login-error').style.display = 'none';
+            showView('login');
+        }
+
+        // --- Init ---
+        (function init() {
+            const { token, email, password } = getStoredAuth();
+            if (token && email && password) {
+                showView('courses');
+                fetchCourses();
+            } else {
+                showView('login');
+            }
+        })();
     </script>
 </body>
 </html>

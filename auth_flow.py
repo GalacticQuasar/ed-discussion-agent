@@ -1,17 +1,14 @@
 import requests
-import os
-import dotenv
-
-dotenv.load_dotenv()
-
-EMAIL = os.getenv("ED_EMAIL")
-PASSWORD = os.getenv("ED_PASSWORD")
 
 
-def get_auth_token():
+class EdAuthError(Exception):
+    pass
+
+
+def get_auth_token(email, password):
     payload = {
-        "login": EMAIL,
-        "password": PASSWORD
+        "login": email,
+        "password": password
     }
 
     response = requests.post("https://us.edstem.org/api/token", json=payload)
@@ -19,13 +16,15 @@ def get_auth_token():
     if response.status_code == 200:
         return response.json().get("token")
     else:
-        raise Exception(f"Login failed: {response.status_code} - {response.text}")
+        raise EdAuthError(f"Login failed: {response.status_code} - {response.text}")
 
 def get_courses(token):
     url = "https://us.edstem.org/api/user"
     headers = {"X-Token": token}
 
     response = requests.get(url, headers=headers)
+    if response.status_code == 401:
+        raise EdAuthError("Token expired or invalid")
     if response.status_code != 200:
         return []
 
@@ -54,30 +53,7 @@ def scrape_threads(token, course_id):
     }
 
     response = requests.get(f"https://us.edstem.org/api/courses/{course_id}/threads", headers=headers, params=params)
+    if response.status_code == 401:
+        raise EdAuthError("Token expired or invalid")
+    response.raise_for_status()
     return response.json()
-
-
-if __name__ == "__main__":
-    try:
-        token = get_auth_token()
-        print("Successfully authenticated!")
-        print(f"Token: {token}")
-
-        all_courses = get_courses(token)
-
-        print("---------- Available Courses: ----------")
-        for c in all_courses:
-            status_str = "[ACTIVE]" if c['status'] == 'active' else "[ARCHIVED]"
-            print(f"{status_str} {c['code']}: {c['name']} (ID: {c['id']})")
-        print("----------------------------------------")
-        
-        selected_course = input("\nEnter the course ID to scrape threads from: ")
-
-        data = scrape_threads(token, selected_course)
-        print(f"Retrieved {len(data.get('threads', []))} threads.")
-        # Print out all threads
-        for thread in data.get("threads", []):
-            print(f"Thread ID: {thread['id']}, Title: {thread['title']}")
-
-    except Exception as e:
-        print(f"Error: {e}")
