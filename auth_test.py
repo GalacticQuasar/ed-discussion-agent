@@ -8,7 +8,7 @@ EMAIL = os.getenv("ED_EMAIL")
 PASSWORD = os.getenv("ED_PASSWORD")
 
 
-def get_fresh_token():
+def get_auth_token():
     payload = {
         "login": EMAIL,
         "password": PASSWORD
@@ -59,7 +59,7 @@ def scrape_threads(token, course_id):
 
 if __name__ == "__main__":
     try:
-        token = get_fresh_token()
+        token = get_auth_token()
         print("Successfully authenticated!")
         print(f"Token: {token}")
 
