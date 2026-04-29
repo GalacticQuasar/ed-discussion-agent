@@ -4,7 +4,7 @@ import os
 
 dotenv.load_dotenv()
 
-url = "https://us.edstem.org/api/courses/92707/threads"  # CS 250 Ed discussion
+url = "https://us.edstem.org/api/courses/92707/threads"  # CS 252 Ed discussion
 params = {
     "limit": 30,
     "sort": "new"
