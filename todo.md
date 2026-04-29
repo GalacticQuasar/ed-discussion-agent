@@ -2,6 +2,7 @@
 - Agent provides Ed discussion links as references (render directly in interface?)
 - Agent should use filters on Ed discussion
 - Notification system (agent has tool to send email when it finds new post on topic)
+    - Basically "semantic event listeners" that trigger when new post matches criteria defined in natural language
 
 # Use Cases to think about
 - "Tell me everything I need to know about homework 5"
