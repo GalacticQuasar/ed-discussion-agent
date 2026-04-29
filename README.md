@@ -25,15 +25,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Environment Configuration
-Create a `.env` file in the project root directory:
+### 4. Start the Server
 ```bash
-# Create .env file
-touch .env  # On Windows: New-Item .env -ItemType File
+python main.py
 ```
 
-Add your Edstem credentials to the `.env` file:
-```env
-ED_EMAIL=your_email@example.com
-ED_PASSWORD=your_password
-```
+The server runs on `http://0.0.0.0:8000`. Open it in your browser and log in with your Edstem credentials on the login page.
