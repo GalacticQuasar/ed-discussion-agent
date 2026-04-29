@@ -21,7 +21,7 @@ def get_fresh_token():
     else:
         raise Exception(f"Login failed: {response.status_code} - {response.text}")
 
-def get_my_courses(token):
+def get_courses(token):
     url = "https://us.edstem.org/api/user"
     headers = {"X-Token": token}
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         print("Successfully authenticated!")
         print(f"Token: {token}")
 
-        all_courses = get_my_courses(token)
+        all_courses = get_courses(token)
 
         print("---------- Available Courses: ----------")
         for c in all_courses:
