@@ -4,6 +4,9 @@
 - Notification system (agent has tool to send email when it finds new post on topic)
     - Basically "semantic event listeners" that trigger when new post matches criteria defined in natural language
 
+> Note: Use Ollama SDK for LLMs and embedding models
+> Note: Architecture should probably be building services (semantic retrieval of threads in a course, semantic event listener which would have its own LLM call) and then make a final agent that can use those services as tools to answer user queries and set up notifications
+
 # Use Cases to think about
 - "Tell me everything I need to know about homework 5"
     - Should compile a list of tips/advice from relevant posts
