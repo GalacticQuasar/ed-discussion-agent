@@ -1,23 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import requests
-import os
-import dotenv
+from auth_flow import get_auth_token, scrape_threads
 
-dotenv.load_dotenv()
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-ED_API_URL = "https://us.edstem.org/api/courses/92707/threads"
 
 
 @app.get("/")
@@ -26,17 +13,10 @@ def serve_frontend():
 
 
 @app.get("/api/threads")
-def get_threads(limit: int = 30, sort: str = "new"):
-    headers = {"x-token": os.getenv("ED_X_TOKEN")}
-    params = {"limit": limit, "sort": sort}
-
-    response = requests.get(ED_API_URL, headers=headers, params=params)
-
-    if response.ok:
-        # print(response.json()["threads"][0].keys())
-        return response.json()
-    else:
-        return {"error": response.text}, response.status_code
+def get_threads(course_id: int = 92707, limit: int = 30, sort: str = "new"):
+    token = get_auth_token()
+    data = scrape_threads(token, course_id)
+    return data
 
 
 if __name__ == "__main__":
