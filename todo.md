@@ -3,6 +3,9 @@
 - Agent should use filters on Ed discussion
 - Notification system (agent has tool to send email when it finds new post on topic)
     - Basically "semantic event listeners" that trigger when new post matches criteria defined in natural language
+- Continuous compilation of updates regarding specific topics (homework, project, exam) that students can query for latest info/tips/etc.
+    - Store in Markdown for human readability OR structured format (YAML/JSON) for easy parsing and retrieval
+        - If structured, could have each update be an object with fields like "title", "content", "source_link", "created_at", etc.
 
 > Note: Use Ollama SDK for LLMs and embedding models
 > Note: Architecture should probably be building services (semantic retrieval of threads in a course, semantic event listener which would have its own LLM call) and then make a final agent that can use those services as tools to answer user queries and set up notifications
