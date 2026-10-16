@@ -5,7 +5,7 @@ import logging
 
 import aiohttp
 
-from auth_flow import get_token
+from auth_flow import get_courses, get_token
 
 log = logging.getLogger("ed_stream")
 
@@ -21,32 +21,9 @@ _CLOSE_TYPES = (
 
 
 def fetch_enrolled_courses():
-    """Fetch courses the user is enrolled in via the REST API.
-
-    Returns a list of dicts with id, code, name, status, role, created_at,
-    sorted newest first.
-    """
-    import requests
-
+    """Fetch the user's courses in Ed dashboard order (see auth_flow.get_courses)."""
     token, _ = get_token()
-    url = f"https://{API_HOST}/api/user"
-    res = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=15)
-    if res.status_code != 200:
-        raise RuntimeError(f"Could not fetch courses: {res.status_code} - {res.text}")
-
-    courses = []
-    for entry in res.json().get("courses", []):
-        info = entry.get("course", {})
-        courses.append({
-            "id": info.get("id"),
-            "code": info.get("code"),
-            "name": info.get("name"),
-            "status": info.get("status"),
-            "role": (entry.get("role") or {}).get("role"),
-            "created_at": info.get("created_at") or "",
-        })
-    courses.sort(key=lambda c: c["created_at"], reverse=True)
-    return courses
+    return get_courses(token)
 
 
 async def listen(course_ids, on_message):

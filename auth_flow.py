@@ -1,7 +1,10 @@
+import calendar
 import requests
 import logging
 import os
+import re
 import dotenv
+from datetime import datetime, timezone
 
 dotenv.load_dotenv()
 
@@ -49,7 +52,60 @@ def _authed_get(url, token, headers=None, **kwargs):
         raise Exception(f"GET {url} failed: {response.status_code} - {response.text}")
     return response
 
+# Session ranks from Ed's dashboard; later in the year ranks higher.
+_SESSION_RANK = {"winter": 1, "spring": 2, "summer": 3, "fall": 4}
+
+
+def _natural_key(value):
+    """Approximates Ed's localeCompare(..., {numeric: true}): case-insensitive, digit runs compared as numbers."""
+    return [int(part) if part.isdigit() else part.casefold() for part in re.split(r"(\d+)", str(value or ""))]
+
+
+def _one_month_before(now):
+    year, month = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
+    return now.replace(year=year, month=month, day=min(now.day, calendar.monthrange(year, month)[1]))
+
+
+def is_dashboard_active(course, now=None):
+    """True if Ed's dashboard shows the course under "Courses" rather than "Archived".
+
+    Mirrors the dashboard rule: not archived, and either a perpetual course
+    (session "X"), flagged always_active, or with course activity
+    (last_active, roughly the newest post) within the last month.
+    """
+    if course["status"] == "archived":
+        return False
+    if course["session"] == "X" or course["always_active"]:
+        return True
+    now = now or datetime.now(timezone.utc)
+    return course["last_active"] is not None and course["last_active"] >= _one_month_before(now)
+
+
+def sort_courses(courses, now=None):
+    """Return courses in Ed dashboard order, setting course["dashboard_active"] on each.
+
+    Active courses come first, sorted by code. Archived ones follow, sorted by
+    year (newest first), then session (fall before spring), then code.
+    """
+    for course in courses:
+        course["dashboard_active"] = is_dashboard_active(course, now)
+
+    def key(course):
+        if course["dashboard_active"]:
+            return (0, _natural_key(course["code"]))
+        try:
+            year = -int(course["year"])
+        except (TypeError, ValueError):
+            year = 0
+        rank = _SESSION_RANK.get(str(course["session"] or "").strip().lower())
+        session = (0, -rank) if rank is not None else (1, _natural_key(course["session"]))
+        return (1, year, session, _natural_key(course["code"]))
+
+    return sorted(courses, key=key)
+
+
 def get_courses(token):
+    """Return the user's courses in Ed dashboard order (see sort_courses)."""
     url = "https://us.edstem.org/api/user"
 
     data = _authed_get(url, token).json()
@@ -57,14 +113,20 @@ def get_courses(token):
 
     for entry in data.get("courses", []):
         course_info = entry.get("course", {})
+        last_active = entry.get("last_active")
         courses.append({
             "id": course_info.get("id"),
             "code": course_info.get("code"),
             "name": course_info.get("name"),
-            "status": course_info.get("status")
+            "status": course_info.get("status"),
+            "role": (entry.get("role") or {}).get("role"),
+            "year": course_info.get("year"),
+            "session": course_info.get("session"),
+            "always_active": bool((course_info.get("settings") or {}).get("always_active")),
+            "last_active": datetime.fromisoformat(last_active) if last_active else None,
         })
 
-    return courses
+    return sort_courses(courses)
 
 def scrape_threads(token, course_id):
     headers = {
@@ -89,7 +151,7 @@ if __name__ == "__main__":
 
         print("---------- Available Courses: ----------")
         for c in all_courses:
-            status_str = "[ACTIVE]" if c['status'] == 'active' else "[ARCHIVED]"
+            status_str = "[ACTIVE]" if c['dashboard_active'] else "[ARCHIVED]"
             print(f"{status_str} {c['code']}: {c['name']} (ID: {c['id']})")
         print("----------------------------------------")
         

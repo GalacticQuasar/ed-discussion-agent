@@ -25,7 +25,7 @@ def pick_courses():
 
     print("Your courses:")
     for i, course in enumerate(courses, start=1):
-        status = "" if course["status"] == "active" else f" [{course['status']}]"
+        status = "" if course["dashboard_active"] else " [archived]"
         print(f"  {i}) {course['code']}: {course['name']} (ID: {course['id']}){status}")
 
     raw = input(
