@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from auth_flow import get_auth_token, scrape_threads
+from auth_flow import get_token, scrape_threads
 
 
 app = FastAPI()
@@ -14,7 +14,7 @@ def serve_frontend():
 
 @app.get("/api/threads")
 def get_threads(course_id: int = 92707, limit: int = 30, sort: str = "new"):
-    token = get_auth_token()
+    token, _ = get_token()
     data = scrape_threads(token, course_id)
     return data
 

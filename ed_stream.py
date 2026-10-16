@@ -2,10 +2,10 @@
 
 import asyncio
 import logging
-import os
 
 import aiohttp
-import dotenv
+
+from auth_flow import get_token
 
 log = logging.getLogger("ed_stream")
 
@@ -20,25 +20,6 @@ _CLOSE_TYPES = (
 )
 
 
-def get_token():
-    """Return (token, refreshable).
-
-    Prefers ED_API_TOKEN from the environment (.env); falls back to
-    email/password login. 'refreshable' means a rejected token can be
-    replaced by logging in again (email/password tokens yes, static API
-    tokens no).
-    """
-    dotenv.load_dotenv()
-    token = os.getenv("ED_API_TOKEN")
-    if token:
-        log.debug("Using ED_API_TOKEN from environment")
-        return token, False
-    from auth_flow import get_auth_token
-
-    log.debug("Authenticating with email/password")
-    return get_auth_token(), True
-
-
 def fetch_enrolled_courses():
     """Fetch courses the user is enrolled in via the REST API.
 
@@ -49,17 +30,9 @@ def fetch_enrolled_courses():
 
     token, _ = get_token()
     url = f"https://{API_HOST}/api/user"
-    res = None
-    for headers in (
-        {"Authorization": f"Bearer {token}"},
-        {"X-Token": token},
-    ):
-        res = requests.get(url, headers=headers, timeout=15)
-        if res.status_code == 200:
-            break
-    if res is None or res.status_code != 200:
-        detail = f"{res.status_code} - {res.text}" if res is not None else "no response"
-        raise RuntimeError(f"Could not fetch courses: {detail}")
+    res = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=15)
+    if res.status_code != 200:
+        raise RuntimeError(f"Could not fetch courses: {res.status_code} - {res.text}")
 
     courses = []
     for entry in res.json().get("courses", []):

@@ -32,8 +32,15 @@ Create a `.env` file in the project root directory:
 touch .env  # On Windows: New-Item .env -ItemType File
 ```
 
-Add your Edstem credentials to the `.env` file:
+Add your Edstem credentials to the `.env` file. An API token is recommended:
+```env
+ED_API_TOKEN=your_api_token
+```
+
+If `ED_API_TOKEN` is not set, the app falls back to logging in with your email and password:
 ```env
 ED_EMAIL=your_email@example.com
 ED_PASSWORD=your_password
 ```
+
+When `ED_API_TOKEN` is set it always takes precedence, and `ED_EMAIL`/`ED_PASSWORD` are ignored.

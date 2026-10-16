@@ -14,8 +14,10 @@ pip install -r requirements.txt
 ```
 
 Credentials live in `.env` (gitignored):
-- `ED_EMAIL` / `ED_PASSWORD`: email/password login via `POST /api/token`
-- `ED_API_TOKEN` (optional): a static API token. `ed_stream.get_token()` prefers it over email/password.
+- `ED_API_TOKEN` (preferred): a static API token. When set, it takes precedence everywhere.
+- `ED_EMAIL` / `ED_PASSWORD` (fallback): email/password login via `POST /api/token`, used only when `ED_API_TOKEN` is unset.
+
+All entry points get their token from `auth_flow.get_token()`, which applies this precedence. Don't call `get_auth_token()` directly.
 
 Entry points (there are no tests, linter, or build step):
 - `python main.py`: FastAPI server on :8000. It serves `index.html` at `/` and proxies `/api/threads?course_id=...`.
@@ -24,8 +26,8 @@ Entry points (there are no tests, linter, or build step):
 
 ## Architecture
 
-- **`auth_flow.py`**: synchronous `requests` helpers for the Ed REST API at `https://us.edstem.org/api`. `get_auth_token()`, `get_courses()` and `scrape_threads()` authenticate with the `X-Token` header.
-- **`ed_stream.py`**: async real-time layer using `aiohttp`. `listen(course_ids, on_message)` connects to `wss://us.edstem.org/api/stream` with `Authorization: Bearer <token>`, sends a `course.subscribe` per course, and calls the async `on_message` for each event. It swallows the `course.subscribe` acks and `chat.init`. It reconnects on disconnect and re-logs in on a 401 only when the token came from email/password; a rejected static `ED_API_TOKEN` raises. `fetch_enrolled_courses()` tries both Bearer and `X-Token` auth styles.
+- **`auth_flow.py`**: synchronous `requests` helpers for the Ed REST API at `https://us.edstem.org/api`. `get_token()` returns `(token, refreshable)`: it uses `ED_API_TOKEN` if set (not refreshable) and otherwise logs in with `get_auth_token()` (refreshable). `get_courses()` and `scrape_threads()` go through `_authed_get()`, which sends `Authorization: Bearer <token>` (the style Ed's API docs specify; `ED_API_TOKEN` is rejected in `X-Token`) and raises on any non-2xx response.
+- **`ed_stream.py`**: async real-time layer using `aiohttp`. `listen(course_ids, on_message)` connects to `wss://us.edstem.org/api/stream` with `Authorization: Bearer <token>`, sends a `course.subscribe` per course, and calls the async `on_message` for each event. It swallows the `course.subscribe` acks and `chat.init`. It reconnects on disconnect and re-logs in on a 401 only when the token came from email/password; a rejected static `ED_API_TOKEN` raises. `fetch_enrolled_courses()` also uses Bearer auth.
 - **`watch_posts.py`**: a consumer of `ed_stream`. It filters for `thread.new` events (the thread is at `message["data"]["thread"]`) and converts Ed's rich-text `document` JSON or HTML `content` to plain text. New event-driven features (such as semantic listeners) should plug in as `on_message` handlers in the same way.
 - **`main.py` + `index.html`**: a minimal web UI. The default `course_id` is hardcoded (92707), the endpoint re-authenticates on every request, and its `limit`/`sort` query params are accepted but ignored (`scrape_threads` hardcodes them).
 
