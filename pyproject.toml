@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Read-only MCP server that lets AI agents search and read your Ed Discussion (edstem.org) courses"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "GalacticQuasar" }]
 keywords = ["mcp", "ed discussion", "edstem", "model context protocol"]
 dependencies = [
@@ -32,8 +34,8 @@ default-groups = ["experiments"]
 
 [tool.hatch.build.targets.sdist]
 # Ship only the package, not experiments/, local settings or other repo files.
-include = ["src/ed_discussion_mcp", "README.md", "pyproject.toml"]
+include = ["src/ed_discussion_mcp", "README.md", "LICENSE", "pyproject.toml"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]  # 1.27+ supports PEP 639 license metadata
 build-backend = "hatchling.build"

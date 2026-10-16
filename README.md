@@ -174,3 +174,7 @@ The package lives in `src/ed_discussion_mcp/`: `server.py` defines the MCP tools
 - `uv run experiments/watch_posts.py [COURSE_ID ...]`: watches for new posts in real time over Ed's websocket stream. With no arguments it asks which courses to watch.
 - `uv run experiments/main.py`: a minimal web UI on port 8000 that lists a course's recent threads.
 - `uv run experiments/auth_flow.py`: an interactive CLI that lists your courses and dumps a course's 30 newest threads.
+
+## License
+
+[MIT](LICENSE)
