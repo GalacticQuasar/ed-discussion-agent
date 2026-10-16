@@ -1,13 +1,16 @@
 """MCP server that gives an agent read-only access to your Ed Discussion courses.
 
 Usage:
-    python ed_mcp_server.py
+    ed-discussion-mcp                       # stdio (what most MCP clients launch)
+    ed-discussion-mcp --http [--port 8001]  # Streamable HTTP; see http_transport
 
-Speaks MCP over stdio. Credentials come from .env via auth_flow.get_token()
-(ED_API_TOKEN preferred, ED_EMAIL/ED_PASSWORD as fallback). Keyword search
-uses Ed's own search endpoint, which matches thread titles, bodies and replies.
+Credentials and region come from environment variables
+(see ed_api): ED_API_TOKEN preferred, ED_EMAIL/ED_PASSWORD as fallback, and
+ED_REGION (default "us"). Keyword search uses Ed's own search endpoint, which
+matches thread titles, bodies and replies.
 """
 
+import argparse
 import html
 import logging
 import re
@@ -15,16 +18,15 @@ import threading
 from datetime import datetime, timezone
 from typing import Literal
 
+import requests
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-import auth_flow
+from . import ed_api
 
-log = logging.getLogger("ed_mcp_server")
+log = logging.getLogger(__name__)
 
-API_BASE = "https://us.edstem.org/api"
-WEB_BASE = "https://edstem.org/us"
 PAGE_SIZE = 100  # Ed caps thread listings at 100 per request
 SNIPPET_CHARS = 300
 STUDENT_ROLES = {None, "student"}
@@ -52,7 +54,10 @@ Tips:
 mcp = MCPServer("ed-discussion", instructions=INSTRUCTIONS)
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 
-_AUTH_HINT = " (Ed rejected the credentials; check ED_API_TOKEN, or ED_EMAIL/ED_PASSWORD, in .env)"
+_AUTH_HINT = (
+    " (Ed rejected the credentials; check ED_API_TOKEN, or ED_EMAIL/ED_PASSWORD, "
+    "and that ED_REGION matches your account)"
+)
 _STATUS_HINTS = {
     403: " (no access: check the course_id with list_courses)",
     404: " (not found: check the id or number)",
@@ -73,29 +78,36 @@ def _call(fn):
     try:
         with _token_lock:
             if _token is None:
-                _token, _refreshable = auth_flow.get_token()
+                _token, _refreshable = ed_api.get_token()
             token = _token
         try:
             return fn(token)
-        except auth_flow.EdAPIError as e:
+        except ed_api.EdAPIError as e:
             if not e.is_auth_error or not _refreshable:
                 raise
             log.info("Token rejected; logging in again")
             with _token_lock:
-                _token = auth_flow.get_auth_token()
+                _token = ed_api.get_auth_token()
                 token = _token
             return fn(token)
     # ToolError (unlike other exceptions) shows its message to the model.
-    except auth_flow.MissingCredentialsError as e:
+    except (ed_api.MissingCredentialsError, ed_api.InvalidRegionError) as e:
         raise ToolError(str(e)) from e
-    except auth_flow.EdAPIError as e:
-        hint = _AUTH_HINT if e.is_auth_error else _STATUS_HINTS.get(e.status, "")
+    except requests.ConnectionError as e:
+        raise ToolError(f"Could not reach Ed ({e}). Check your connection and ED_REGION.") from e
+    except ed_api.EdAPIError as e:
+        if e.is_auth_error:
+            hint = _AUTH_HINT
+        elif 300 <= e.status < 400:
+            hint = " (Ed redirected the request instead of answering; check ED_REGION)"
+        else:
+            hint = _STATUS_HINTS.get(e.status, "")
         raise ToolError(f"{e}{hint}") from e
 
 
 def _get(path, params=None):
     """GET an Ed API path and return the JSON body."""
-    return _call(lambda token: auth_flow._authed_get(f"{API_BASE}{path}", token, params=params).json())
+    return _call(lambda token: ed_api._authed_get(f"{ed_api.api_base()}{path}", token, params=params).json())
 
 
 def _text(post):
@@ -128,10 +140,6 @@ def _author(user):
     return {"author": user.get("name"), "author_role": role, "is_staff": role not in STUDENT_ROLES}
 
 
-def _thread_url(thread):
-    return f"{WEB_BASE}/courses/{thread['course_id']}/discussion/{thread['id']}"
-
-
 def _summary(thread, query=None):
     """Compact view of a thread for listings and search results."""
     return {
@@ -150,7 +158,7 @@ def _summary(thread, query=None):
         "is_answered": thread["is_answered"],
         "is_staff_answered": thread["is_staff_answered"],
         "reply_count": thread["reply_count"],
-        "url": _thread_url(thread),
+        "url": ed_api.thread_url(thread["course_id"], thread["id"]),
         "snippet": _snippet(_text(thread), query),
     }
 
@@ -223,7 +231,7 @@ def list_courses(include_archived: bool = False) -> list[dict]:
             "role": c["role"],
             "active": c["dashboard_active"],
         }
-        for c in _call(auth_flow.get_courses)
+        for c in _call(ed_api.get_courses)
         if include_archived or c["dashboard_active"]
     ]
 
@@ -343,6 +351,27 @@ def get_thread(
     }
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(
+        prog="ed-discussion-mcp",
+        description="Read-only MCP server for your Ed Discussion courses. Speaks stdio unless --http is given.",
+    )
+    parser.add_argument("--http", action="store_true",
+                        help="serve Streamable HTTP at http://HOST:PORT/mcp instead of stdio; "
+                             "requests must send the bearer token from ED_MCP_AUTH_TOKEN")
+    parser.add_argument("--host", default="127.0.0.1", help="interface to bind with --http (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8001, help="port to listen on with --http (default: 8001)")
+    args = parser.parse_args()
+
+    # In stdio mode stdout carries the MCP protocol, so logs go to stderr (basicConfig's default).
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
-    mcp.run()
+    if args.http:
+        from .http_transport import serve
+
+        serve(mcp, args.host, args.port)
+    else:
+        mcp.run()
+
+
+if __name__ == "__main__":
+    main()

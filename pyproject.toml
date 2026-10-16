@@ -1,0 +1,39 @@
+[project]
+name = "ed-discussion-mcp"
+version = "0.1.0"
+description = "Read-only MCP server that lets AI agents search and read your Ed Discussion (edstem.org) courses"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "GalacticQuasar" }]
+keywords = ["mcp", "ed discussion", "edstem", "model context protocol"]
+dependencies = [
+    "mcp>=2.3,<3",
+    "requests>=2.31",
+    "uvicorn>=0.31.1",
+]
+
+[project.scripts]
+ed-discussion-mcp = "ed_discussion_mcp.server:main"
+
+[project.urls]
+Repository = "https://github.com/GalacticQuasar/ed-discussion-agent"
+
+[dependency-groups]
+# Not part of the package: the scripts in experiments/.
+experiments = [
+    "aiohttp",
+    "fastapi",
+    "python-dotenv",
+    "uvicorn",
+]
+
+[tool.uv]
+default-groups = ["experiments"]
+
+[tool.hatch.build.targets.sdist]
+# Ship only the package, not experiments/, local settings or other repo files.
+include = ["src/ed_discussion_mcp", "README.md", "pyproject.toml"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

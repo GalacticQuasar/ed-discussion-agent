@@ -1,7 +1,7 @@
 """Watch for new Ed discussion threads and log them to the terminal.
 
 Usage:
-    python3 watch_posts.py [COURSE_ID ...]
+    uv run experiments/watch_posts.py [COURSE_ID ...]
 
 With no arguments, fetches your enrolled courses and lets you pick which
 ones to watch. Passing course IDs skips the prompt. Waits for real-time
@@ -15,6 +15,7 @@ import logging
 import sys
 
 import ed_stream
+from ed_discussion_mcp.ed_api import thread_url
 
 
 def pick_courses():
@@ -103,7 +104,7 @@ def print_new_post(thread):
     print(f"Title:     {thread.get('title') or '(no title)'}")
     print(f"Author:    {thread.get('user', {}).get('name', 'Anonymous')}")
     print(f"Category:  {thread.get('category', 'Uncategorized')}")
-    print(f"Link:      https://{ed_stream.API_HOST}/courses/{thread.get('course_id')}/discussion/{thread.get('id')}")
+    print(f"Link:      {thread_url(thread.get('course_id'), thread.get('id'))}")
     print("-" * 70)
     body = render_text(thread.get("content") or thread.get("document"))
     if body.strip():

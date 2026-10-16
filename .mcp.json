@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "ed-discussion": {
-      "command": ".venv/bin/python",
-      "args": ["ed_mcp_server.py"]
+      "command": "uv",
+      "args": ["run", "--env-file", ".env", "ed-discussion-mcp"]
     }
   }
 }

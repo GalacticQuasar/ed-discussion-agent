@@ -4,17 +4,18 @@ import asyncio
 import logging
 
 import aiohttp
+import dotenv
 
-from auth_flow import get_courses, get_token
+from ed_discussion_mcp.ed_api import get_courses, get_token, stream_url
+
+dotenv.load_dotenv()
 
 log = logging.getLogger("ed_stream")
 
-API_HOST = "us.edstem.org"
-WS_URL = f"wss://{API_HOST}/api/stream"
 RECONNECT_DELAY = 5
 # Ed rejects an invalid or expired token at the handshake with 400 (and a
 # missing one with 401). aiohttp drops the body, so the "bad_token" code
-# that auth_flow.EdAPIError checks isn't available here.
+# that ed_api.EdAPIError checks isn't available here.
 _AUTH_REJECTED_STATUSES = {400, 401}
 
 _CLOSE_TYPES = (
@@ -25,7 +26,7 @@ _CLOSE_TYPES = (
 
 
 def fetch_enrolled_courses():
-    """Fetch the user's courses in Ed dashboard order (see auth_flow.get_courses)."""
+    """Fetch the user's courses in Ed dashboard order (see ed_api.get_courses)."""
     token, _ = get_token()
     return get_courses(token)
 
@@ -43,7 +44,7 @@ async def listen(course_ids, on_message):
         while True:
             try:
                 async with session.ws_connect(
-                    WS_URL,
+                    stream_url(),
                     headers=auth_headers,
                     heartbeat=60,
                 ) as ws:

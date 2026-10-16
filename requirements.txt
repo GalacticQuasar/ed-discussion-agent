@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-requests
-python-dotenv
-aiohttp
-mcp>=2.3,<3

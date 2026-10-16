@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from auth_flow import get_token, scrape_threads
+from pathlib import Path
+from auth_flow import scrape_threads
+from ed_discussion_mcp.ed_api import get_token
 
 
 app = FastAPI()
@@ -9,7 +11,7 @@ app = FastAPI()
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse("index.html")
+    return FileResponse(Path(__file__).with_name("index.html"))
 
 
 @app.get("/api/threads")

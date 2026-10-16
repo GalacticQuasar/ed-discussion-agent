@@ -1,39 +1,90 @@
+"""Synchronous helpers for Ed Discussion's REST API: credentials, regions, errors and courses.
+
+Configuration comes from environment variables, read on every call so a
+caller can load a .env file after importing this module:
+
+- ED_API_TOKEN: a static API token (preferred).
+- ED_EMAIL / ED_PASSWORD: email/password login, used only when ED_API_TOKEN is unset.
+- ED_REGION: the Ed region your account lives in, e.g. "us" or "au" (default "us").
+"""
+
 import calendar
-import requests
 import logging
 import os
 import re
-import dotenv
 from datetime import datetime, timezone
 
-dotenv.load_dotenv()
+import requests
 
-log = logging.getLogger("auth_flow")
+log = logging.getLogger(__name__)
 
-EMAIL = os.getenv("ED_EMAIL")
-PASSWORD = os.getenv("ED_PASSWORD")
+DEFAULT_REGION = "us"
+# Ed's original (Australian) region serves its API from the bare domain;
+# au.edstem.org only redirects to the homepage. Other regions use a subdomain.
+_API_HOSTS = {"au": "edstem.org"}
 
 
 class MissingCredentialsError(Exception):
     """Neither ED_API_TOKEN nor ED_EMAIL/ED_PASSWORD is set."""
 
 
+class InvalidRegionError(Exception):
+    """ED_REGION is not a plausible Ed region code."""
+
+
+def region():
+    """The configured Ed region code, e.g. "us" (the default) or "au"."""
+    value = (os.getenv("ED_REGION") or DEFAULT_REGION).strip().lower()
+    if not re.fullmatch(r"[a-z]{2,3}", value):
+        raise InvalidRegionError(f'ED_REGION must be a region code such as "us" or "au", got {value!r}.')
+    return value
+
+
+def _api_host():
+    code = region()
+    return _API_HOSTS.get(code, f"{code}.edstem.org")
+
+
+def api_base():
+    """Base URL of the REST API for the configured region."""
+    return f"https://{_api_host()}/api"
+
+
+def stream_url():
+    """Websocket URL of the real-time event stream for the configured region."""
+    return f"wss://{_api_host()}/api/stream"
+
+
+def web_base():
+    """Base URL of the Ed website for the configured region, e.g. https://edstem.org/us."""
+    return f"https://edstem.org/{region()}"
+
+
+def thread_url(course_id, thread_id):
+    """Browser link to a thread."""
+    return f"{web_base()}/courses/{course_id}/discussion/{thread_id}"
+
+
+def token_settings_url():
+    """Page where users create and view their API tokens."""
+    return f"{web_base()}/settings/api-tokens"
+
+
 def get_token():
     """Return (token, refreshable).
 
-    Prefers ED_API_TOKEN from the environment (.env); falls back to
-    email/password login. 'refreshable' means a rejected token can be
-    replaced by logging in again (email/password tokens yes, static API
-    tokens no).
+    Prefers ED_API_TOKEN; falls back to email/password login. 'refreshable'
+    means a rejected token can be replaced by logging in again
+    (email/password tokens yes, static API tokens no).
     """
     token = os.getenv("ED_API_TOKEN")
     if token:
         log.debug("Using ED_API_TOKEN from environment")
         return token, False
-    if not (EMAIL and PASSWORD):
+    if not (os.getenv("ED_EMAIL") and os.getenv("ED_PASSWORD")):
         raise MissingCredentialsError(
-            "No Ed credentials found. Set ED_API_TOKEN in .env (create one in Ed under "
-            "Settings > API Tokens), or set ED_EMAIL and ED_PASSWORD."
+            f"No Ed credentials found. Set the ED_API_TOKEN environment variable to an API token "
+            f"(create one at {token_settings_url()}), or set ED_EMAIL and ED_PASSWORD."
         )
     log.debug("Authenticating with email/password")
     return get_auth_token(), True
@@ -42,11 +93,11 @@ def get_token():
 def get_auth_token():
     """Log in with ED_EMAIL/ED_PASSWORD. Prefer get_token(), which uses ED_API_TOKEN when set."""
     payload = {
-        "login": EMAIL,
-        "password": PASSWORD
+        "login": os.getenv("ED_EMAIL"),
+        "password": os.getenv("ED_PASSWORD"),
     }
 
-    response = requests.post("https://us.edstem.org/api/token", json=payload)
+    response = requests.post(f"{api_base()}/token", json=payload, allow_redirects=False)
 
     if response.status_code == 200:
         return response.json().get("token")
@@ -68,7 +119,8 @@ class EdAPIError(Exception):
             code = response.json().get("code")
         except (ValueError, AttributeError):
             code = None
-        return cls(f"{message}: {response.status_code} - {response.text.strip()}", response.status_code, code)
+        body = re.sub(r"\s+", " ", response.text).strip()[:300]
+        return cls(f"{message}: {response.status_code} - {body}", response.status_code, code)
 
     @property
     def is_auth_error(self):
@@ -77,10 +129,14 @@ class EdAPIError(Exception):
 
 
 def _authed_get(url, token, headers=None, **kwargs):
-    """GET with Bearer auth (the style Ed's API docs specify). Raises EdAPIError on a non-2xx status."""
+    """GET with Bearer auth (the style Ed's API docs specify). Raises EdAPIError on a non-2xx status.
+
+    Redirects aren't followed: Ed's API doesn't redirect, but a wrong region's
+    host does (to the homepage), which would otherwise surface as a JSON error.
+    """
     headers = {**(headers or {}), "Authorization": f"Bearer {token}"}
-    response = requests.get(url, headers=headers, **kwargs)
-    if not response.ok:
+    response = requests.get(url, headers=headers, allow_redirects=False, **kwargs)
+    if not 200 <= response.status_code < 300:
         raise EdAPIError.from_response(f"GET {url} failed", response)
     return response
 
@@ -138,7 +194,7 @@ def sort_courses(courses, now=None):
 
 def get_courses(token):
     """Return the user's courses in Ed dashboard order (see sort_courses)."""
-    url = "https://us.edstem.org/api/user"
+    url = f"{api_base()}/user"
 
     data = _authed_get(url, token).json()
     courses = []
@@ -159,41 +215,3 @@ def get_courses(token):
         })
 
     return sort_courses(courses)
-
-def scrape_threads(token, course_id):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-    }
-    params = {
-        "limit": 30,
-        "sort": "new"
-    }
-
-    response = _authed_get(f"https://us.edstem.org/api/courses/{course_id}/threads", token, headers=headers, params=params)
-    return response.json()
-
-
-if __name__ == "__main__":
-    try:
-        token, _ = get_token()
-        print("Successfully authenticated!")
-        print(f"Token: {token[:6]}...")
-
-        all_courses = get_courses(token)
-
-        print("---------- Available Courses: ----------")
-        for c in all_courses:
-            status_str = "[ACTIVE]" if c['dashboard_active'] else "[ARCHIVED]"
-            print(f"{status_str} {c['code']}: {c['name']} (ID: {c['id']})")
-        print("----------------------------------------")
-        
-        selected_course = input("\nEnter the course ID to scrape threads from: ")
-
-        data = scrape_threads(token, selected_course)
-        print(f"Retrieved {len(data.get('threads', []))} threads.")
-        # Print out all threads
-        for thread in data.get("threads", []):
-            print(f"Thread ID: {thread['id']}, Title: {thread['title']}")
-
-    except Exception as e:
-        print(f"Error: {e}")
