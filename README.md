@@ -44,3 +44,27 @@ ED_PASSWORD=your_password
 ```
 
 When `ED_API_TOKEN` is set it always takes precedence, and `ED_EMAIL`/`ED_PASSWORD` are ignored.
+
+## MCP server
+
+`ed_mcp_server.py` is an MCP server (stdio) that gives an agent read-only access to your Ed courses. Its tools:
+
+| Tool | What it does |
+|---|---|
+| `list_courses` | Your courses in Ed dashboard order (archived ones optional) |
+| `course_overview` | A course's categories, pinned threads, recent announcements and recent threads |
+| `search_threads` | Keyword search using Ed's own search (titles, bodies and replies) |
+| `list_threads` | Newest threads, filtered by category, type, pinned, staff author or date |
+| `get_thread` | A full thread with nested answers and comments, by id or by `#number` |
+
+Claude Code picks it up automatically from `.mcp.json` when run from this directory (approve the server when prompted). For other clients, such as Claude Desktop, register it with absolute paths:
+```json
+{
+  "mcpServers": {
+    "ed-discussion": {
+      "command": "/path/to/ed-discussion-agent/.venv/bin/python",
+      "args": ["/path/to/ed-discussion-agent/ed_mcp_server.py"]
+    }
+  }
+}
+```

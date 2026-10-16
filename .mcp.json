@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ed-discussion": {
+      "command": ".venv/bin/python",
+      "args": ["ed_mcp_server.py"]
+    }
+  }
+}
