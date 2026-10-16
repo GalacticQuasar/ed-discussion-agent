@@ -14,6 +14,10 @@ EMAIL = os.getenv("ED_EMAIL")
 PASSWORD = os.getenv("ED_PASSWORD")
 
 
+class MissingCredentialsError(Exception):
+    """Neither ED_API_TOKEN nor ED_EMAIL/ED_PASSWORD is set."""
+
+
 def get_token():
     """Return (token, refreshable).
 
@@ -26,6 +30,11 @@ def get_token():
     if token:
         log.debug("Using ED_API_TOKEN from environment")
         return token, False
+    if not (EMAIL and PASSWORD):
+        raise MissingCredentialsError(
+            "No Ed credentials found. Set ED_API_TOKEN in .env (create one in Ed under "
+            "Settings > API Tokens), or set ED_EMAIL and ED_PASSWORD."
+        )
     log.debug("Authenticating with email/password")
     return get_auth_token(), True
 
@@ -42,14 +51,37 @@ def get_auth_token():
     if response.status_code == 200:
         return response.json().get("token")
     else:
-        raise Exception(f"Login failed: {response.status_code} - {response.text}")
+        raise EdAPIError.from_response("Login failed", response)
+
+class EdAPIError(Exception):
+    """A non-2xx response from Ed's API. 'status' holds the HTTP status code and
+    'code' Ed's error code from the JSON body (e.g. "bad_token"), if any."""
+
+    def __init__(self, message, status, code=None):
+        super().__init__(message)
+        self.status = status
+        self.code = code
+
+    @classmethod
+    def from_response(cls, message, response):
+        try:
+            code = response.json().get("code")
+        except (ValueError, AttributeError):
+            code = None
+        return cls(f"{message}: {response.status_code} - {response.text.strip()}", response.status_code, code)
+
+    @property
+    def is_auth_error(self):
+        """True if Ed rejected the token. Ed answers an invalid token with 400 "bad_token", not 401."""
+        return self.status == 401 or self.code == "bad_token"
+
 
 def _authed_get(url, token, headers=None, **kwargs):
-    """GET with Bearer auth (the style Ed's API docs specify). Raises on a non-2xx status."""
+    """GET with Bearer auth (the style Ed's API docs specify). Raises EdAPIError on a non-2xx status."""
     headers = {**(headers or {}), "Authorization": f"Bearer {token}"}
     response = requests.get(url, headers=headers, **kwargs)
     if not response.ok:
-        raise Exception(f"GET {url} failed: {response.status_code} - {response.text}")
+        raise EdAPIError.from_response(f"GET {url} failed", response)
     return response
 
 # Session ranks from Ed's dashboard; later in the year ranks higher.

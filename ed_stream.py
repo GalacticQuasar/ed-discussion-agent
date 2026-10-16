@@ -12,6 +12,10 @@ log = logging.getLogger("ed_stream")
 API_HOST = "us.edstem.org"
 WS_URL = f"wss://{API_HOST}/api/stream"
 RECONNECT_DELAY = 5
+# Ed rejects an invalid or expired token at the handshake with 400 (and a
+# missing one with 401). aiohttp drops the body, so the "bad_token" code
+# that auth_flow.EdAPIError checks isn't available here.
+_AUTH_REJECTED_STATUSES = {400, 401}
 
 _CLOSE_TYPES = (
     aiohttp.WSMsgType.CLOSE,
@@ -68,15 +72,15 @@ async def listen(course_ids, on_message):
                             log.info("Stream closed by server (code %s)", msg.data)
                             break
             except aiohttp.WSServerHandshakeError as e:
-                if e.status == 401:
+                if e.status in _AUTH_REJECTED_STATUSES:
                     if refreshable:
-                        log.warning("Token rejected (401); re-authenticating")
+                        log.warning("Token rejected (%s); re-authenticating", e.status)
                         token, refreshable = get_token()
                         auth_headers = {"Authorization": f"Bearer {token}"}
                     else:
                         log.error(
-                            "ED_API_TOKEN was rejected (401). Check the token in .env "
-                            "or unset it to use email/password login."
+                            "ED_API_TOKEN was rejected (%s). Check the token in .env "
+                            "or unset it to use email/password login.", e.status
                         )
                         raise
                 else:
