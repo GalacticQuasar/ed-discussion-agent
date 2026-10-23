@@ -1,5 +1,8 @@
 # ed-discussion-mcp
 
+[![PyPI](https://img.shields.io/pypi/v/ed-discussion-mcp)](https://pypi.org/project/ed-discussion-mcp/)
+[![Tests](https://github.com/GalacticQuasar/ed-discussion-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/GalacticQuasar/ed-discussion-agent/actions/workflows/tests.yml)
+
 An [MCP](https://modelcontextprotocol.io) server that lets AI agents (Claude Code, Claude Desktop, Cursor, VS Code, Codex and others) search and read your [Ed Discussion](https://edstem.org) courses. You can then ask things like:
 
 - "When is the CS 180 midterm, and has the room changed?"
@@ -28,7 +31,7 @@ Every result includes the author's role (student or staff), timestamps, whether 
 
 ### 1. Install uv
 
-The server runs with [uv](https://docs.astral.sh/uv/getting-started/installation/)'s `uvx`, which downloads and runs it in an isolated environment; there is nothing else to install.
+The server runs with [uv](https://docs.astral.sh/uv/getting-started/installation/)'s `uvx`, which downloads [`ed-discussion-mcp` from PyPI](https://pypi.org/project/ed-discussion-mcp/) and runs it in an isolated environment; there is nothing else to install.
 
 ```bash
 # macOS / Linux
