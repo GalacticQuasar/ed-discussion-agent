@@ -28,9 +28,17 @@ experiments = [
     "python-dotenv",
     "uvicorn",
 ]
+# Not part of the package: the test suite in tests/.
+dev = [
+    "pytest",
+    "responses",
+]
 
 [tool.uv]
-default-groups = ["experiments"]
+default-groups = ["experiments", "dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.hatch.build.targets.sdist]
 # Ship only the package, not experiments/, local settings or other repo files.

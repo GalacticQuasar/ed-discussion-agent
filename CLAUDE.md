@@ -13,7 +13,7 @@ Tooling for agents over Ed Discussion (edstem.org) course forums. The main deliv
 Managed with uv (`pyproject.toml` + `uv.lock`; there is no requirements.txt):
 
 ```bash
-uv sync    # installs the package in editable mode plus the "experiments" dependency group
+uv sync    # installs the package in editable mode plus the "experiments" and "dev" dependency groups
 ```
 
 Credentials (all read from environment variables at call time, never at import):
@@ -25,7 +25,9 @@ The package never loads `.env` itself: installed via `uvx` it has no repo to fin
 
 All callers get their token from `ed_api.get_token()`, which applies this precedence. Don't call `get_auth_token()` directly.
 
-Entry points (there are no tests, linter, or build step beyond `uv build`):
+Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials or network: HTTP is mocked with `responses`, and `tests/conftest.py` has autouse fixtures that clear the `ED_*` variables and reset `server`'s cached token. `pytest` and `responses` live in the `dev` dependency group.
+
+Entry points (there is no linter or build step beyond `uv build`):
 - `uv run --env-file .env ed-discussion-mcp`: the MCP server over stdio from the working copy. `.mcp.json` runs exactly this for Claude Code. `python -m ed_discussion_mcp` also works.
 - `uv run --env-file .env ed-discussion-mcp --http [--host H] [--port 8001]`: the same server over Streamable HTTP at `/mcp`, for clients that connect to a URL (e.g. Open WebUI).
 - `uvx --no-cache --from . ed-discussion-mcp`: runs the working copy packaged the way users get it. Without `--no-cache`, uvx reuses its first cached environment for a local path at the same version and silently runs stale code.
@@ -41,7 +43,7 @@ Releasing to PyPI (only when the user asks; ordinary commits don't need a releas
 
 ### Package (`src/ed_discussion_mcp/`)
 
-Dependencies are only `mcp`, `requests` and `uvicorn` (for HTTP mode); anything only the experiments need goes in the `experiments` dependency group, not `[project.dependencies]`.
+Dependencies are only `mcp`, `requests` and `uvicorn` (for HTTP mode); anything only the experiments need goes in the `experiments` dependency group, and test-only tools go in `dev`, not `[project.dependencies]`.
 
 - **`ed_api.py`**: synchronous `requests` helpers for Ed's REST API.
   - Regions: `region()` validates `ED_REGION`; `api_base()`, `stream_url()`, `web_base()`, `thread_url()` and `token_settings_url()` build URLs from it. The API host is `<region>.edstem.org` except for `au`, whose API is on the bare `edstem.org` (`au.edstem.org` just redirects to the homepage). Web links are `https://edstem.org/<region>/...` for every region.
@@ -72,3 +74,5 @@ Prototypes that import `ed_discussion_mcp.ed_api` and load `.env` with python-do
 ## Conventions
 
 Don't create git commits; leave committing to the user.
+
+Tests never call the real Ed API. Mock HTTP with the `mocked_http` fixture (a `responses.RequestsMock`, which fails on any unregistered request), or `monkeypatch` `ed_api` functions when testing logic above the HTTP layer (as `tests/test_server_call.py` does for `_call()`). Set credentials and region with `monkeypatch.setenv`.

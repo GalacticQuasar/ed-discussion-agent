@@ -4,10 +4,11 @@
     - Filters: category, thread type, pinned, staff author, date
     - Region support, stdio and HTTP (bearer auth) modes
     - Published on PyPI (0.1.1): `uvx ed-discussion-mcp`
+- Tests (`uv run pytest`): `ed_api` credentials, regions and errors; `server._call()` re-login and error conversion
+    - Not yet covered: the tools' result shaping (`_summary`, `_reply`, filters, paging) and `http_transport`
 - Real-time new post stream over Ed's websocket (prototype: `experiments/ed_stream.py`, `experiments/watch_posts.py`)
 
 ## Next
-- Add tests for the MCP server (at least `ed_api` auth/error handling and `server._call()`)
 - Semantic event listeners: notify when a new post matches criteria defined in natural language
     - Plug in as an `on_message` handler on `ed_stream.listen()`, filtering `thread.new` events
     - LLM/embedding check per new thread against each rule
