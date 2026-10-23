@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Opens PRs that bump the actions used in .github/workflows (e.g. setup-uv's pinned version).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Skip releases younger than a week, so a broken release has time to be fixed or pulled.
+    cooldown:
+      default-days: 7
+    # One PR for all action bumps instead of one per action.
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
