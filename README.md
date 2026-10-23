@@ -50,7 +50,7 @@ Most MCP clients accept this standard config. Put your token in place of `your_t
   "mcpServers": {
     "ed-discussion": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/GalacticQuasar/ed-discussion-agent", "ed-discussion-mcp"],
+      "args": ["ed-discussion-mcp"],
       "env": { "ED_API_TOKEN": "your_token" }
     }
   }
@@ -64,7 +64,7 @@ Your token goes in your client's own config file on your machine. Don't put it i
 
 ```bash
 claude mcp add ed-discussion --scope user -e ED_API_TOKEN=your_token -- \
-  uvx --from git+https://github.com/GalacticQuasar/ed-discussion-agent ed-discussion-mcp
+  uvx ed-discussion-mcp
 ```
 </details>
 
@@ -94,7 +94,7 @@ Run **MCP: Open User Configuration** from the Command Palette and add the server
     "ed-discussion": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/GalacticQuasar/ed-discussion-agent", "ed-discussion-mcp"],
+      "args": ["ed-discussion-mcp"],
       "env": { "ED_API_TOKEN": "${input:ed-api-token}" }
     }
   }
@@ -107,7 +107,7 @@ Run **MCP: Open User Configuration** from the Command Palette and add the server
 
 ```bash
 codex mcp add ed-discussion --env ED_API_TOKEN=your_token -- \
-  uvx --from git+https://github.com/GalacticQuasar/ed-discussion-agent ed-discussion-mcp
+  uvx ed-discussion-mcp
 ```
 
 Or add it to `~/.codex/config.toml`:
@@ -115,7 +115,7 @@ Or add it to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.ed-discussion]
 command = "uvx"
-args = ["--from", "git+https://github.com/GalacticQuasar/ed-discussion-agent", "ed-discussion-mcp"]
+args = ["ed-discussion-mcp"]
 env = { ED_API_TOKEN = "your_token" }
 ```
 </details>
@@ -137,7 +137,7 @@ By default, your client launches the server and talks to it over stdio. Some cli
 
 ```bash
 ED_API_TOKEN=your_token ED_MCP_AUTH_TOKEN=choose-a-long-random-secret \
-  uvx --from git+https://github.com/GalacticQuasar/ed-discussion-agent ed-discussion-mcp --http
+  uvx ed-discussion-mcp --http
 ```
 
 It serves MCP over Streamable HTTP at `http://127.0.0.1:8001/mcp` (change it with `--host` and `--port`). Point your client at that URL and set the header `Authorization: Bearer <your ED_MCP_AUTH_TOKEN>`; most clients have a bearer token or headers field for this. Requests without the token are rejected. If you leave `ED_MCP_AUTH_TOKEN` unset, the server makes up a token and prints it at startup, but it changes every time the server restarts.

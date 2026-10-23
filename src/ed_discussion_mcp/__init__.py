@@ -1,3 +1,3 @@
 """Read-only MCP server for Ed Discussion (edstem.org) course forums."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
