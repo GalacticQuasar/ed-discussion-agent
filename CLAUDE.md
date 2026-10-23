@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tooling for agents over Ed Discussion (edstem.org) course forums. The main deliverable is `ed-discussion-mcp`, a read-only MCP server published as a Python package that users run locally with `uvx` and their own Ed API token (see `README.md` for user-facing setup). `experiments/` holds prototypes that aren't part of the package.
+Tooling for agents over Ed Discussion (edstem.org) course forums. The main deliverable is `ed-discussion-mcp`, a read-only MCP server published on PyPI that users run locally with `uvx ed-discussion-mcp` and their own Ed API token (see `README.md` for user-facing setup). `experiments/` holds prototypes that aren't part of the package.
 
-`todo.md` describes the planned direction: semantic retrieval over threads, natural-language "semantic event listeners" that trigger notifications (e.g. email) on matching new posts, and continuously compiled topic summaries. The plan is to build these as services and expose them as tools to a final agent. **Use the Ollama SDK for LLMs and embedding models** (per `todo.md`).
+`todo.md` tracks what's done and what's next. The planned direction: semantic retrieval over threads, natural-language "semantic event listeners" that trigger notifications (e.g. email) on matching new posts, and continuously compiled topic summaries. The plan is to build these as services and expose them as tools to a final agent. **Use the Ollama SDK for LLMs and embedding models** (per `todo.md`).
 
 ## Setup and commands
 
@@ -28,8 +28,14 @@ All callers get their token from `ed_api.get_token()`, which applies this preced
 Entry points (there are no tests, linter, or build step beyond `uv build`):
 - `uv run --env-file .env ed-discussion-mcp`: the MCP server over stdio from the working copy. `.mcp.json` runs exactly this for Claude Code. `python -m ed_discussion_mcp` also works.
 - `uv run --env-file .env ed-discussion-mcp --http [--host H] [--port 8001]`: the same server over Streamable HTTP at `/mcp`, for clients that connect to a URL (e.g. Open WebUI).
-- `uvx --no-cache --from . ed-discussion-mcp`: runs it the way users get it. Without `--no-cache`, uvx reuses its first cached environment for a local path at the same version and silently runs stale code.
+- `uvx --no-cache --from . ed-discussion-mcp`: runs the working copy packaged the way users get it. Without `--no-cache`, uvx reuses its first cached environment for a local path at the same version and silently runs stale code.
 - `uv run experiments/watch_posts.py [COURSE_ID ...]`, `uv run experiments/main.py` (FastAPI UI on :8000), `uv run experiments/auth_flow.py` (interactive CLI): prototypes.
+
+Releasing to PyPI (the README is the PyPI project page, so README changes ship only with a new version; a version number can never be re-uploaded):
+1. Bump the version in both `pyproject.toml` and `src/ed_discussion_mcp/__init__.py` (`__version__`), then `uv lock`.
+2. Commit and tag `vX.Y.Z` before publishing, so the release matches a commit.
+3. `rm -rf dist && uv build`, then `uv run --env-file .env -- uv publish` (`uv publish` has no `--env-file`; it reads `UV_PUBLISH_TOKEN`, which is kept in `.env`). Never pass the token with `--token`.
+4. Verify with `uvx --no-cache ed-discussion-mcp --help`.
 
 ## Architecture
 

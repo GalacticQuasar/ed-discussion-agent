@@ -2,13 +2,12 @@
 - Read-only MCP server (`ed-discussion-mcp`): `list_courses`, `course_overview`, `search_threads`, `list_threads`, `get_thread`
     - Results include Ed thread links, and the server instructions tell agents to cite them
     - Filters: category, thread type, pinned, staff author, date
-    - Region support, stdio and HTTP (bearer auth) modes, runnable via `uvx` from git
+    - Region support, stdio and HTTP (bearer auth) modes
+    - Published on PyPI (0.1.1): `uvx ed-discussion-mcp`
 - Real-time new post stream over Ed's websocket (prototype: `experiments/ed_stream.py`, `experiments/watch_posts.py`)
 
 ## Next
-- Ship the MCP server
-    - Publish to PyPI so setup becomes `uvx ed-discussion-mcp`
-    - Add tests (at least `ed_api` auth/error handling and `server._call()`)
+- Add tests for the MCP server (at least `ed_api` auth/error handling and `server._call()`)
 - Semantic event listeners: notify when a new post matches criteria defined in natural language
     - Plug in as an `on_message` handler on `ed_stream.listen()`, filtering `thread.new` events
     - LLM/embedding check per new thread against each rule
