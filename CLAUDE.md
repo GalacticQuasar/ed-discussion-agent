@@ -25,7 +25,7 @@ The package never loads `.env` itself: installed via `uvx` it has no repo to fin
 
 All callers get their token from `ed_api.get_token()`, which applies this precedence. Don't call `get_auth_token()` directly.
 
-Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials or network: HTTP is mocked with `responses`, and `tests/conftest.py` has autouse fixtures that clear the `ED_*` variables and reset `server`'s cached token. `pytest` and `responses` live in the `dev` dependency group.
+Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials or network: HTTP is mocked with `responses`, and `tests/conftest.py` has autouse fixtures that clear the `ED_*` variables and reset `server`'s cached token. `pytest` and `responses` live in the `dev` dependency group. GitHub Actions (`.github/workflows/tests.yml`) runs them on every push to `main` and every PR, on Python 3.10 through 3.14, after `uv sync --locked` (so a stale `uv.lock` fails CI; run `uv lock` after editing dependencies).
 
 Entry points (there is no linter or build step beyond `uv build`):
 - `uv run --env-file .env ed-discussion-mcp`: the MCP server over stdio from the working copy. `.mcp.json` runs exactly this for Claude Code. `python -m ed_discussion_mcp` also works.
