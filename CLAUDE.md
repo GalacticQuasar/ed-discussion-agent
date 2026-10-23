@@ -31,10 +31,10 @@ Entry points (there are no tests, linter, or build step beyond `uv build`):
 - `uvx --no-cache --from . ed-discussion-mcp`: runs the working copy packaged the way users get it. Without `--no-cache`, uvx reuses its first cached environment for a local path at the same version and silently runs stale code.
 - `uv run experiments/watch_posts.py [COURSE_ID ...]`, `uv run experiments/main.py` (FastAPI UI on :8000), `uv run experiments/auth_flow.py` (interactive CLI): prototypes.
 
-Releasing to PyPI (the README is the PyPI project page, so README changes ship only with a new version; a version number can never be re-uploaded):
-1. Bump the version in both `pyproject.toml` and `src/ed_discussion_mcp/__init__.py` (`__version__`), then `uv lock`.
-2. Commit and tag `vX.Y.Z` before publishing, so the release matches a commit.
-3. `rm -rf dist && uv build`, then `uv run --env-file .env -- uv publish` (`uv publish` has no `--env-file`; it reads `UV_PUBLISH_TOKEN`, which is kept in `.env`). Never pass the token with `--token`.
+Releasing to PyPI (only when the user asks; ordinary commits don't need a release). The README is the PyPI project page, so README changes ship only with a new version, and a version number can never be re-uploaded:
+1. Bump the version in both `pyproject.toml` and `src/ed_discussion_mcp/__init__.py` (`__version__`), then `uv lock`. Patch for fixes and docs; minor for new features, and while on 0.x also for breaking changes (renaming tools or changing their parameters).
+2. Commit, tag `vX.Y.Z`, and push both (`git push && git push --tags`) before publishing, so the release matches a commit. Don't amend or force-push a tagged commit.
+3. `rm -rf dist && uv build` (`uv publish` uploads everything in `dist/`), then `uv run --env-file .env -- uv publish` (`uv publish` has no `--env-file`; it reads `UV_PUBLISH_TOKEN`, a project-scoped token kept in `.env`). Never pass the token with `--token`.
 4. Verify with `uvx --no-cache ed-discussion-mcp --help`.
 
 ## Architecture
