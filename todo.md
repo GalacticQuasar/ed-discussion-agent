@@ -3,7 +3,7 @@
     - Results include Ed thread links, and the server instructions tell agents to cite them
     - Filters: category, thread type, pinned, staff author, date
     - Region support, stdio and HTTP (bearer auth) modes
-    - Published on PyPI (0.1.1): `uvx ed-discussion-mcp`
+    - Published on PyPI (0.1.2): `uvx ed-discussion-mcp`
 - Tests (`uv run pytest`): `ed_api` credentials, regions and errors; `server._call()` re-login and error conversion
     - Tools (`tests/test_server_tools.py`): result shaping, filters, paging, `get_thread` lookup
     - Not yet covered: `get_courses` dashboard sorting and `http_transport`
