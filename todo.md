@@ -5,7 +5,8 @@
     - Region support, stdio and HTTP (bearer auth) modes
     - Published on PyPI (0.1.1): `uvx ed-discussion-mcp`
 - Tests (`uv run pytest`): `ed_api` credentials, regions and errors; `server._call()` re-login and error conversion
-    - Not yet covered: the tools' result shaping (`_summary`, `_reply`, filters, paging) and `http_transport`
+    - Tools (`tests/test_server_tools.py`): result shaping, filters, paging, `get_thread` lookup
+    - Not yet covered: `get_courses` dashboard sorting and `http_transport`
 - Real-time new post stream over Ed's websocket (prototype: `experiments/ed_stream.py`, `experiments/watch_posts.py`)
 
 ## Next

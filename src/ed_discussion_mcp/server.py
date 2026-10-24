@@ -181,7 +181,13 @@ def _reply(reply, users, accepted_id):
 def _parse_since(since):
     if not since:
         return None
-    parsed = datetime.fromisoformat(since)
+    # Python 3.10's fromisoformat rejects a trailing "Z".
+    if since.endswith(("Z", "z")):
+        since = since[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(since)
+    except ValueError:
+        raise ToolError(f"Invalid since {since!r}: use an ISO date or datetime, e.g. \"2026-10-01\".") from None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
