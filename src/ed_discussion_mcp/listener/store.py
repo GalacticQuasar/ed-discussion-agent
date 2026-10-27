@@ -27,7 +27,13 @@ CREATE TABLE IF NOT EXISTS rules (
 );
 CREATE TABLE IF NOT EXISTS cursors (course_id INTEGER PRIMARY KEY, last_seen_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS judgments (event_key TEXT NOT NULL, rule_id INTEGER NOT NULL, score REAL NOT NULL, model TEXT NOT NULL, at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS sent (event_key TEXT PRIMARY KEY, rule_ids TEXT NOT NULL, status TEXT NOT NULL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sent (
+    event_key TEXT PRIMARY KEY,
+    rule_ids TEXT NOT NULL,
+    notification TEXT NOT NULL,  -- JSON, kept so a failed send can be retried
+    status TEXT NOT NULL CHECK (status IN ('pending', 'sent', 'failed')),
+    at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -129,3 +135,67 @@ def heartbeat(conn, version):
 def last_heartbeat(conn):
     value = get_setting(conn, "heartbeat")
     return json.loads(value) if value else None
+
+
+def get_cursor(conn, course_id):
+    row = conn.execute("SELECT last_seen_at FROM cursors WHERE course_id = ?", (course_id,)).fetchone()
+    return row["last_seen_at"] if row else None
+
+
+def advance_cursor(conn, course_id, seen_at):
+    """Move a course's cursor forward to seen_at (never back)."""
+    current = get_cursor(conn, course_id)
+    if current and datetime.fromisoformat(current) >= datetime.fromisoformat(seen_at):
+        return
+    with conn:
+        conn.execute("INSERT OR REPLACE INTO cursors (course_id, last_seen_at) VALUES (?, ?)", (course_id, seen_at))
+
+
+def record_judgments(conn, event_key, scores, model):
+    at = now()
+    with conn:
+        conn.executemany(
+            "INSERT INTO judgments (event_key, rule_id, score, model, at) VALUES (?, ?, ?, ?, ?)",
+            [(event_key, rule_id, score, model, at) for rule_id, score in scores.items()],
+        )
+
+
+def already_sent(conn, event_key):
+    return conn.execute("SELECT 1 FROM sent WHERE event_key = ?", (event_key,)).fetchone() is not None
+
+
+def record_match(conn, event_key, rules, notification):
+    """Record a match before notifying, in one transaction: claim event_key,
+    and mark the rules fired (disabling "once" rules) so a crash between this
+    and the send never notifies twice. Returns False if event_key was already claimed.
+    """
+    at = now()
+    with conn:
+        claimed = conn.execute(
+            "INSERT OR IGNORE INTO sent (event_key, rule_ids, notification, status, at) VALUES (?, ?, ?, 'pending', ?)",
+            (event_key, json.dumps([r["id"] for r in rules]), json.dumps(notification), at),
+        ).rowcount
+        if not claimed:
+            return False
+        for rule in rules:
+            conn.execute(
+                "UPDATE rules SET fired_at = ?, enabled = enabled AND mode != 'once' WHERE id = ?",
+                (at, rule["id"]),
+            )
+    return True
+
+
+def mark_sent(conn, event_key, ok):
+    with conn:
+        conn.execute("UPDATE sent SET status = ? WHERE event_key = ?", ("sent" if ok else "failed", event_key))
+
+
+def unsent(conn, pending_before):
+    """Notifications to retry: failed ones, and ones claimed before pending_before
+    (an ISO time) but never sent, e.g. after a crash. Newer pending ones may still be in flight."""
+    rows = conn.execute(
+        "SELECT event_key, notification FROM sent"
+        " WHERE status = 'failed' OR (status = 'pending' AND at < ?) ORDER BY at",
+        (pending_before,),
+    )
+    return [(row["event_key"], json.loads(row["notification"])) for row in rows]

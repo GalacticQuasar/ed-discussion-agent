@@ -3,6 +3,7 @@
 Usage:
     ed-discussion-mcp                       # stdio (what most MCP clients launch)
     ed-discussion-mcp --http [--port 8001]  # Streamable HTTP; see http_transport
+    ed-discussion-mcp listen                # notification daemon; see listener.daemon
 
 Credentials and region come from environment variables
 (see ed_api): ED_API_TOKEN preferred, ED_EMAIL/ED_PASSWORD as fallback, and
@@ -363,6 +364,9 @@ def main():
         prog="ed-discussion-mcp",
         description="Read-only MCP server for your Ed Discussion courses. Speaks stdio unless --http is given.",
     )
+    parser.add_argument("command", nargs="?", choices=["listen"],
+                        help="'listen' runs the notification daemon for rules made with the listener tools "
+                             "(needs the [listener] extra and Ollama) instead of the MCP server")
     parser.add_argument("--http", action="store_true",
                         help="serve Streamable HTTP at http://HOST:PORT/mcp instead of stdio; "
                              "requests must send the bearer token from ED_MCP_AUTH_TOKEN")
@@ -372,6 +376,16 @@ def main():
 
     # In stdio mode stdout carries the MCP protocol, so logs go to stderr (basicConfig's default).
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    # httpx (used by the Ollama SDK) logs every request at INFO.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    if args.command == "listen":
+        try:
+            from .listener import daemon
+        except ImportError as e:
+            raise SystemExit(f"The listener needs the [listener] extra ({e}). Run it with: "
+                             "uvx --from 'ed-discussion-mcp[listener]' ed-discussion-mcp listen")
+        daemon.main()
+        return
     if os.environ.get("ED_LISTENER") == "1":
         from .listener import tools
 

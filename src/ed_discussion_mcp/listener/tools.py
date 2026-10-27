@@ -16,9 +16,6 @@ from .. import ed_api, server
 from . import judge, notify, store
 
 PREVIEW_MAX = 50
-# Provisional, biased toward recall: in the first eval (see todo.md) true
-# matches scored 0.93+ but some false ones reached ~0.9.
-DEFAULT_THRESHOLD = 0.8
 
 HEARTBEAT_STALE = timedelta(minutes=3)  # the daemon writes one every minute
 LISTEN_COMMAND = "uvx --from 'ed-discussion-mcp[listener]' ed-discussion-mcp listen"
@@ -47,7 +44,7 @@ def preview_rule(
     course_id: int,
     instructions: str,
     staff_only: bool = False,
-    threshold: float = DEFAULT_THRESHOLD,
+    threshold: float = judge.DEFAULT_THRESHOLD,
     limit: int = 20,
 ) -> dict:
     """Score a draft notification rule against a course's most recent threads.
@@ -130,7 +127,7 @@ def _status(conn):
 def _rule_view(rule):
     return {
         **rule,
-        "threshold": rule["threshold"] if rule["threshold"] is not None else DEFAULT_THRESHOLD,
+        "threshold": judge.threshold(rule),
     }
 
 

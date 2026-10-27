@@ -29,6 +29,7 @@ Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials 
 
 Entry points (there is no linter or build step beyond `uv build`):
 - `uv run --env-file .env ed-discussion-mcp`: the MCP server over stdio from the working copy. `.mcp.json` runs exactly this for Claude Code. `python -m ed_discussion_mcp` also works.
+- `uv run --env-file .env ed-discussion-mcp listen`: the notification daemon (needs Ollama with the configured model). Set `ED_LISTENER_DB` to a scratch file to keep test runs out of the real database.
 - `uv run --env-file .env ed-discussion-mcp --http [--host H] [--port 8001]`: the same server over Streamable HTTP at `/mcp`, for clients that connect to a URL (e.g. Open WebUI).
 - `uvx --no-cache --from . ed-discussion-mcp`: runs the working copy packaged the way users get it. Without `--no-cache`, uvx reuses its first cached environment for a local path at the same version and silently runs stale code.
 - `uv run experiments/watch_posts.py [COURSE_ID ...]`, `uv run experiments/main.py` (FastAPI UI on :8000), `uv run experiments/auth_flow.py` (interactive CLI): prototypes.
@@ -43,7 +44,7 @@ Releasing to PyPI (only when the user asks; ordinary commits don't need a releas
 
 ### Package (`src/ed_discussion_mcp/`)
 
-Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` (the listener's System One judge); anything only the experiments need goes in the `experiments` dependency group, and test-only tools go in `dev`, not `[project.dependencies]`.
+Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` (the listener's System One judge), plus the `listener` extra (`aiohttp`, `segno`) for the daemon; anything only the experiments need goes in the `experiments` dependency group, and test-only tools go in `dev`, not `[project.dependencies]`.
 
 - **`ed_api.py`**: synchronous `requests` helpers for Ed's REST API.
   - Regions: `region()` validates `ED_REGION`; `api_base()`, `stream_url()`, `web_base()`, `thread_url()` and `token_settings_url()` build URLs from it. The API host is `<region>.edstem.org` except for `au`, whose API is on the bare `edstem.org` (`au.edstem.org` just redirects to the homepage). Web links are `https://edstem.org/<region>/...` for every region.
@@ -62,14 +63,16 @@ Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` 
   - `judge.py` scores a post against rules with an Ollama System One model (`ED_LISTENER_MODEL`, default `tev1:0.8b`): one `noul` question per request, because batching lets one true answer raise the others. tev1 has a 2050-token context and System One never truncates, so bodies are cut and retried shorter on a length error.
   - `tools.py` holds MCP tools (`preview_rule`, `create_rule`, `list_rules`, `delete_rule`) that `server.main()` registers only when `ED_LISTENER=1`, appending to `INSTRUCTIONS`. They never write to Ed; rule tools write only the local database. Without the flag the published tool list is unchanged.
   - `store.py` is the SQLite database (`ED_LISTENER_DB`, default in the per-user data directory) shared by the MCP server and the daemon: rules, cursors, judgments, sent notifications, and settings (the generated ntfy topic and the daemon heartbeat).
-  - `notify.py` builds ntfy links (`ED_LISTENER_NTFY_SERVER`, default `https://ntfy.sh`).
+  - `notify.py` builds ntfy links and sends notifications with ntfy's JSON publishing (`ED_LISTENER_NTFY_SERVER`, default `https://ntfy.sh`).
+  - `stream.py` is the websocket client (moved from `experiments/ed_stream.py`): `listen(course_ids, on_message, on_connect, reconnect)`. It needs `aiohttp` from the `listener` extra.
+  - `daemon.py` is `ed-discussion-mcp listen`. It subscribes to the courses enabled rules name, judges `thread.new` (fetching the thread for its author) and staff `comment.new` events (with the parent thread as context), and sends one notification per post. A match is claimed in `sent` and `once` rules are disabled in one transaction before sending; failed sends are retried by the minute-by-minute `tick()`, which also writes the heartbeat and reconnects when a rule names a new course. On each connect, threads newer than each course's cursor are backfilled from the listing (a course's first cursor is "now"). Database access stays on the event loop thread; Ed requests, scoring and sends run in `asyncio.to_thread`.
 - **`http_transport.py`**: HTTP mode. Wraps the SDK's `streamable_http_app()` in `BearerAuth`, an ASGI middleware that returns 401 unless `Authorization: Bearer <ED_MCP_AUTH_TOKEN>` matches (constant-time compare; a random token is generated and logged if the variable is unset), and runs it with uvicorn. Non-HTTP scopes pass through so the app's lifespan still starts its session manager. For a localhost bind the SDK adds DNS rebinding protection (foreign `Host` headers get 421); for other binds, the bearer token is the only protection. Auth is deliberately not optional: anyone who can call the endpoint can read Ed as the token owner.
 
 ### Experiments (`experiments/`)
 
 Prototypes that import `ed_discussion_mcp.ed_api` and load `.env` with python-dotenv. Run them as scripts (`uv run experiments/<file>.py`); they import each other as top-level modules.
 
-- **`ed_stream.py`**: async real-time layer using `aiohttp`. `listen(course_ids, on_message)` connects to `ed_api.stream_url()` with `Authorization: Bearer <token>`, sends a `course.subscribe` per course, and calls the async `on_message` for each event. It swallows the `course.subscribe` acks and `chat.init`. It reconnects on disconnect and re-logs in on a rejected token (handshake status 400 or 401; Ed uses 400 for an invalid token) only when the token came from email/password; a rejected static `ED_API_TOKEN` raises.
+- **`ed_stream.py`**: re-exports `listen()` from `ed_discussion_mcp.listener.stream` (see above) and keeps `fetch_enrolled_courses()`. Original description of `listen()`: `listen(course_ids, on_message)` connects to `ed_api.stream_url()` with `Authorization: Bearer <token>`, sends a `course.subscribe` per course, and calls the async `on_message` for each event. It swallows the `course.subscribe` acks and `chat.init`. It reconnects on disconnect and re-logs in on a rejected token (handshake status 400 or 401; Ed uses 400 for an invalid token) only when the token came from email/password; a rejected static `ED_API_TOKEN` raises.
 - **`watch_posts.py`**: a consumer of `ed_stream`. It filters for `thread.new` events (the thread is at `message["data"]["thread"]`) and prints them as plain text. New event-driven features (such as semantic listeners) should plug in as `on_message` handlers in the same way.
 - **`eval_listener.py`**: scores a course's threads against a JSON list of rules (`collect`), then reports precision/recall per threshold from hand-set labels (`report`).
 - **`main.py` + `index.html`**: a minimal web UI. The default `course_id` is hardcoded (92707), the endpoint re-authenticates on every request, and its `limit`/`sort` query params are accepted but ignored (`scrape_threads` in `auth_flow.py` hardcodes them).

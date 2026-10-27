@@ -17,6 +17,9 @@ import re
 import ollama
 
 DEFAULT_MODEL = "tev1:0.8b"
+# Provisional, biased toward recall: in the first eval (see todo.md) true
+# matches scored 0.93+ but some false ones reached ~0.9.
+DEFAULT_THRESHOLD = 0.8
 # tev1 has a 2050-token context and System One never truncates input, so
 # bodies are cut to fit. Too long anyway, and score() retries shorter.
 BODY_CHARS = 3000
@@ -30,6 +33,11 @@ class JudgeError(Exception):
 
 def model():
     return os.environ.get("ED_LISTENER_MODEL") or DEFAULT_MODEL
+
+
+def threshold(rule):
+    """A rule's threshold, or the default when it has none."""
+    return rule["threshold"] if rule.get("threshold") is not None else DEFAULT_THRESHOLD
 
 
 def _client():
@@ -99,3 +107,17 @@ def score(post, rules, parent=None):
             hint = f" (run `ollama pull {name}`)" if e.status_code == 404 else ""
             raise JudgeError(f"System One request failed: {e.error}{hint}") from e
     return scores
+
+
+def is_cloud():
+    """Whether the configured model runs on Ollama's servers rather than locally."""
+    return model().endswith(("-cloud", ":cloud"))
+
+
+def check_model():
+    """Raise JudgeError unless the configured model can answer a System One question.
+
+    Asks a real question: `ollama show` succeeds even for a download that the
+    installed Ollama can no longer load.
+    """
+    score({"title": "Startup check"}, [(0, "Is this a startup check?")])

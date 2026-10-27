@@ -105,7 +105,7 @@ def test_create_rule_saves_it_and_reports_status(my_courses):
     assert rule["instructions"] == "Was a deadline moved?"
     assert rule["course_ids"] == [COURSE]
     assert rule["mode"] == "once"
-    assert rule["threshold"] == tools.DEFAULT_THRESHOLD
+    assert rule["threshold"] == judge.DEFAULT_THRESHOLD
     assert result["listener_running"] is False
     assert "ed-discussion-mcp listen" in result["hint"]
     assert result["ntfy_subscribe_url"].startswith("https://ntfy.sh/ed-")

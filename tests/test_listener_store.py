@@ -80,3 +80,23 @@ def test_heartbeat_round_trips(conn):
     store.heartbeat(conn, "0.2.0")
 
     assert store.last_heartbeat(conn)["version"] == "0.2.0"
+
+
+def test_record_match_claims_once_and_unsent_skips_fresh_pending(conn):
+    rule = store.add_rule(conn, "r", "q", [1], False, "once")
+
+    assert store.record_match(conn, "thread:1", [rule], {"title": "t"}) is True
+    assert store.record_match(conn, "thread:1", [rule], {"title": "t"}) is False
+    assert store.get_rule(conn, rule["id"])["enabled"] is False
+    assert store.unsent(conn, "2000-01-01") == []
+    assert store.unsent(conn, "9999") == [("thread:1", {"title": "t"})]
+
+    store.mark_sent(conn, "thread:1", ok=False)
+    assert store.unsent(conn, "2000-01-01") == [("thread:1", {"title": "t"})]
+
+
+def test_advance_cursor_never_moves_back(conn):
+    store.advance_cursor(conn, 1, "2026-10-12T00:00:00+00:00")
+    store.advance_cursor(conn, 1, "2026-10-11T00:00:00+00:00")
+
+    assert store.get_cursor(conn, 1) == "2026-10-12T00:00:00+00:00"
