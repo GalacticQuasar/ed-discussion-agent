@@ -43,7 +43,7 @@ Releasing to PyPI (only when the user asks; ordinary commits don't need a releas
 
 ### Package (`src/ed_discussion_mcp/`)
 
-Dependencies are only `mcp`, `requests` and `uvicorn` (for HTTP mode); anything only the experiments need goes in the `experiments` dependency group, and test-only tools go in `dev`, not `[project.dependencies]`.
+Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` (the listener's System One judge); anything only the experiments need goes in the `experiments` dependency group, and test-only tools go in `dev`, not `[project.dependencies]`.
 
 - **`ed_api.py`**: synchronous `requests` helpers for Ed's REST API.
   - Regions: `region()` validates `ED_REGION`; `api_base()`, `stream_url()`, `web_base()`, `thread_url()` and `token_settings_url()` build URLs from it. The API host is `<region>.edstem.org` except for `au`, whose API is on the bare `edstem.org` (`au.edstem.org` just redirects to the homepage). Web links are `https://edstem.org/<region>/...` for every region.
@@ -58,6 +58,9 @@ Dependencies are only `mcp`, `requests` and `uvicorn` (for HTTP mode); anything 
   - `main()` parses `--http/--host/--port`; without `--http` it runs stdio.
   - The tool names, parameters and `INSTRUCTIONS` are the server's public interface for users' agents; changing them is a breaking change.
 
+- **`listener/`**: the semantic event listener (in progress; plan and findings in `todo.md`).
+  - `judge.py` scores a post against rules with an Ollama System One model (`ED_LISTENER_MODEL`, default `tev1:0.8b`): one `noul` question per request, because batching lets one true answer raise the others. tev1 has a 2050-token context and System One never truncates, so bodies are cut and retried shorter on a length error.
+  - `tools.py` holds MCP tools (`preview_rule` so far) that `server.main()` registers only when `ED_LISTENER=1`, appending to `INSTRUCTIONS`. They never write to Ed.
 - **`http_transport.py`**: HTTP mode. Wraps the SDK's `streamable_http_app()` in `BearerAuth`, an ASGI middleware that returns 401 unless `Authorization: Bearer <ED_MCP_AUTH_TOKEN>` matches (constant-time compare; a random token is generated and logged if the variable is unset), and runs it with uvicorn. Non-HTTP scopes pass through so the app's lifespan still starts its session manager. For a localhost bind the SDK adds DNS rebinding protection (foreign `Host` headers get 421); for other binds, the bearer token is the only protection. Auth is deliberately not optional: anyone who can call the endpoint can read Ed as the token owner.
 
 ### Experiments (`experiments/`)
@@ -66,6 +69,7 @@ Prototypes that import `ed_discussion_mcp.ed_api` and load `.env` with python-do
 
 - **`ed_stream.py`**: async real-time layer using `aiohttp`. `listen(course_ids, on_message)` connects to `ed_api.stream_url()` with `Authorization: Bearer <token>`, sends a `course.subscribe` per course, and calls the async `on_message` for each event. It swallows the `course.subscribe` acks and `chat.init`. It reconnects on disconnect and re-logs in on a rejected token (handshake status 400 or 401; Ed uses 400 for an invalid token) only when the token came from email/password; a rejected static `ED_API_TOKEN` raises.
 - **`watch_posts.py`**: a consumer of `ed_stream`. It filters for `thread.new` events (the thread is at `message["data"]["thread"]`) and prints them as plain text. New event-driven features (such as semantic listeners) should plug in as `on_message` handlers in the same way.
+- **`eval_listener.py`**: scores a course's threads against a JSON list of rules (`collect`), then reports precision/recall per threshold from hand-set labels (`report`).
 - **`main.py` + `index.html`**: a minimal web UI. The default `course_id` is hardcoded (92707), the endpoint re-authenticates on every request, and its `limit`/`sort` query params are accepted but ignored (`scrape_threads` in `auth_flow.py` hardcodes them).
 - **`auth_flow.py`**: interactive CLI that lists courses and dumps 30 recent threads; also defines `scrape_threads()` for `main.py`.
 

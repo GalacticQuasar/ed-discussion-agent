@@ -13,6 +13,7 @@ matches thread titles, bodies and replies.
 import argparse
 import html
 import logging
+import os
 import re
 import threading
 from datetime import datetime, timezone
@@ -371,6 +372,10 @@ def main():
 
     # In stdio mode stdout carries the MCP protocol, so logs go to stderr (basicConfig's default).
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    if os.environ.get("ED_LISTENER") == "1":
+        from .listener import tools
+
+        tools.register(mcp)
     if args.http:
         from .http_transport import serve
 

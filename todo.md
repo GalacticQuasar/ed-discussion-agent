@@ -97,6 +97,14 @@
 5. Long megathread post plus parent context vs the 64 KiB local limit; where to truncate
     - Largest `document` in 100 recent threads of one course is ~6 KB (median ~170 chars); the binding limit is tev1's 2050-token context (see 3)
 
+## Eval results (tev1:0.8b, one course, 126 threads / 35 staff posts, labelled by Claude)
+- Run with `experiments/eval_listener.py collect` then `report`
+- Recall is fine at 0.8: the one deadline extension scored 0.93-0.95 across wordings; 2 of 3 exam posts scored >= 0.93
+- Precision is the problem: release posts that state due dates ("HW3 Released ... due Oct 19") score 0.85-0.92 on deadline-change rules, and office-hours posts score ~0.7-0.9 on exam rules. Best wordings left only a 0.02-0.04 gap between the true match and the top false one
+- In absolute terms this is a few extra notifications per rule per term (staff post ~35 threads a term), which may be acceptable for a personal notifier biased toward recall
+- The recording rule's only (borderline) true post, a tutorial-files post, scored 0.41: rules about things the course rarely posts can't be checked with preview
+- Next: compare `nimble` (once it can be pulled) and a cloud model (`clef:cloud` needs Ollama >= 0.40.5; this machine has 0.40.3) on the same labelled set; label more courses
+
 ## Milestones
 1. Run the checks above
 2. Judge, `preview_rule`, and an offline eval harness (replay a past term's threads against sample rules, label hits, report precision/recall per threshold; bias toward recall)
