@@ -10,6 +10,7 @@ authors = [{ name = "GalacticQuasar" }]
 keywords = ["mcp", "ed discussion", "edstem", "model context protocol"]
 dependencies = [
     "mcp>=2.3,<3",
+    "ollama>=0.6.3",
     "requests>=2.31",
     "uvicorn>=0.31.1",
 ]

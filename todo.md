@@ -31,11 +31,11 @@
 - Events: `thread.new` plus staff replies (answers/comments), since recordings and extensions often land as staff replies in existing threads or megathreads
 - Rules are written by the user's own agent through MCP tools (e.g. "notify me if there are any deadline changes" in Claude Code); no generative LLM runs locally
 - Matching: structured prefilters (course, `staff_only`, private) then Ollama System One (`POST /v1/systemone`, https://docs.ollama.com/api/systemone)
-    - One request per event; each active rule in the course is one `noul` question (max 64 per request, chunk beyond that)
+    - One request per (event, rule): batching several `noul` questions in one request lets a true answer raise the others (with tev1, a final-exam-date post scored 0.10 on a recording rule alone, 0.98 batched)
     - `noul` returns an uncalibrated 0-1 score, so each rule has a threshold (global default, per-rule override)
     - No explanation text comes back, so notifications show the post and which rules matched
-    - Local `nimble` by default; cloud models opt-in, and private threads are skipped on cloud unless allowed
-    - No Python SDK is documented for System One; use `requests` unless `ollama-python` supports it
+    - Local `tev1:0.8b` by default (`nimble` from the docs couldn't be pulled here); cloud models opt-in, and private threads are skipped on cloud unless allowed
+    - Called through the Ollama SDK's `Client.systemone()`
 - Rules are `once` (disable after first match) or `always`
 - Storage: SQLite, shared by the MCP server and the daemon
 - Notifications: `Notifier` interface; ntfy first, Discord webhook later
@@ -48,7 +48,7 @@
 - Tools need only `requests` and `sqlite3`; the websocket client goes in a `listener` extra: `uvx --from 'ed-discussion-mcp[listener]' ed-discussion-mcp listen`
 - `experiments/ed_stream.py` moves into the package as `ed_discussion_mcp/listener/stream.py`
 - DB at `~/.local/share/ed-discussion-mcp/listener.db` by default (`ED_LISTENER_DB` overrides), so both processes find it without matching config
-- Config: `OLLAMA_HOST`, `ED_LISTENER_MODEL` (default `nimble`), `ED_LISTENER_NTFY_TOPIC` (optional, see below)
+- Config: `OLLAMA_HOST`, `ED_LISTENER_MODEL` (default `tev1:0.8b`), `ED_LISTENER_NTFY_TOPIC` (optional, see below)
 
 ## ntfy setup
 - If `ED_LISTENER_NTFY_TOPIC` is unset, `listen` generates a random topic on first run, stores it in SQLite, and prints the subscribe link `https://ntfy.sh/<topic>` (plus a terminal QR code)
@@ -80,10 +80,22 @@
 
 ## Things to check first
 1. Websocket event names for answers/comments, and whether the payload includes the author's role (log every event type with `watch_posts`)
+    - On connect Ed sends `herald.init` and one `course.count` per course
+    - Replies (answers and comments) arrive as `comment.new` with the reply at `data.comment`: `id`, `thread_id`, `course_id`, `parent_id`, `type`, `document`, `is_private`, `is_anonymous`, and `user.course_role`. The staff prefilter needs no extra call; parent context needs `get_thread(thread_id)`
+    - `thread.update` arrives on every view with only `{id, view_count}`, which is likely why `updated_at` bumps constantly; the listener must ignore these
 2. Whether `/courses/{id}/threads` can sort by `updated_at` for reply backfill (otherwise diff `reply_count`)
-3. `nimble` latency per request: sets `preview_rule`'s default `limit` and whether previews run in parallel
+    - Only `sort=new` (alias `date`) changes the order; `updated`, `active` and unknown values give the default order
+    - `updated_at` bumps on nearly every thread daily, so it can't detect new replies; backfill replies by diffing `reply_count` (or `get_thread` on recently active threads)
+3. Model latency per request: sets `preview_rule`'s default `limit` and whether previews run in parallel
+    - `ollama pull nimble` fails here (the Ollama daemon dials Cloudflare over IPv6 and WSL has no IPv6 route), so using `tev1:0.8b` (752M params, Q8_0)
+    - tev1: ~0.3-1.5 s per question once loaded, up to ~7 s on a cold load; a 20-thread preview of one rule is ~10-20 s
+    - tev1 runs with `num_ctx` 2050 and System One never truncates ("prompt 0 has 2546 tokens; expected 1–2050"); `judge` cuts bodies to 3000/1000 chars and retries shorter on that error. Text past the cut is never seen
+    - Wording matters a lot. On 6 hand-labelled posts, "announce a change to a deadline" scored an exam-date announcement 0.97 (same as a real extension); "say that a deadline was moved, extended or postponed" separated them (changes 0.90-1.00, others <=0.73). The `noul` `criteria` field barely helped
+    - A student asking "will the deadline be extended?" scored up to 0.73, so `staff_only` and per-rule thresholds matter, and `preview_rule`'s docs should push for "was X changed" phrasing
 4. Whether `ollama-python` supports System One
+    - Yes: `Client.systemone(model, state, questions)` in ollama 0.6.3 (now a dependency; adds httpx/httpcore)
 5. Long megathread post plus parent context vs the 64 KiB local limit; where to truncate
+    - Largest `document` in 100 recent threads of one course is ~6 KB (median ~170 chars); the binding limit is tev1's 2050-token context (see 3)
 
 ## Milestones
 1. Run the checks above
