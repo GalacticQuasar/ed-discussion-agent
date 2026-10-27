@@ -25,7 +25,7 @@ The package never loads `.env` itself: installed via `uvx` it has no repo to fin
 
 All callers get their token from `ed_api.get_token()`, which applies this precedence. Don't call `get_auth_token()` directly.
 
-Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials or network: HTTP is mocked with `responses`, and `tests/conftest.py` has autouse fixtures that clear the `ED_*` variables and reset `server`'s cached token. `pytest` and `responses` live in the `dev` dependency group. GitHub Actions (`.github/workflows/tests.yml`) runs them on every push to `main` and every PR, on Python 3.10 through 3.14, after `uv sync --locked` (so a stale `uv.lock` fails CI; run `uv lock` after editing dependencies). Dependabot (`.github/dependabot.yml`) opens a weekly PR when the workflow's actions have new releases.
+Tests: `uv run pytest` (add `-k <name>` for one test). They need no credentials or network: HTTP is mocked with `responses`, and `tests/conftest.py` has autouse fixtures that clear the `ED_*` variables, point `ED_LISTENER_DB` at a temporary file, and reset `server`'s cached token. `pytest` and `responses` live in the `dev` dependency group. GitHub Actions (`.github/workflows/tests.yml`) runs them on every push to `main` and every PR, on Python 3.10 through 3.14, after `uv sync --locked` (so a stale `uv.lock` fails CI; run `uv lock` after editing dependencies). Dependabot (`.github/dependabot.yml`) opens a weekly PR when the workflow's actions have new releases.
 
 Entry points (there is no linter or build step beyond `uv build`):
 - `uv run --env-file .env ed-discussion-mcp`: the MCP server over stdio from the working copy. `.mcp.json` runs exactly this for Claude Code. `python -m ed_discussion_mcp` also works.
@@ -60,7 +60,9 @@ Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` 
 
 - **`listener/`**: the semantic event listener (in progress; plan and findings in `todo.md`).
   - `judge.py` scores a post against rules with an Ollama System One model (`ED_LISTENER_MODEL`, default `tev1:0.8b`): one `noul` question per request, because batching lets one true answer raise the others. tev1 has a 2050-token context and System One never truncates, so bodies are cut and retried shorter on a length error.
-  - `tools.py` holds MCP tools (`preview_rule` so far) that `server.main()` registers only when `ED_LISTENER=1`, appending to `INSTRUCTIONS`. They never write to Ed.
+  - `tools.py` holds MCP tools (`preview_rule`, `create_rule`, `list_rules`, `delete_rule`) that `server.main()` registers only when `ED_LISTENER=1`, appending to `INSTRUCTIONS`. They never write to Ed; rule tools write only the local database. Without the flag the published tool list is unchanged.
+  - `store.py` is the SQLite database (`ED_LISTENER_DB`, default in the per-user data directory) shared by the MCP server and the daemon: rules, cursors, judgments, sent notifications, and settings (the generated ntfy topic and the daemon heartbeat).
+  - `notify.py` builds ntfy links (`ED_LISTENER_NTFY_SERVER`, default `https://ntfy.sh`).
 - **`http_transport.py`**: HTTP mode. Wraps the SDK's `streamable_http_app()` in `BearerAuth`, an ASGI middleware that returns 401 unless `Authorization: Bearer <ED_MCP_AUTH_TOKEN>` matches (constant-time compare; a random token is generated and logged if the variable is unset), and runs it with uvicorn. Non-HTTP scopes pass through so the app's lifespan still starts its session manager. For a localhost bind the SDK adds DNS rebinding protection (foreign `Host` headers get 421); for other binds, the bearer token is the only protection. Auth is deliberately not optional: anyone who can call the endpoint can read Ed as the token owner.
 
 ### Experiments (`experiments/`)

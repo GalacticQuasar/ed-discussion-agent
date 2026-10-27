@@ -5,14 +5,19 @@ import responses
 
 from ed_discussion_mcp import server
 
-ED_ENV_VARS = ("ED_API_TOKEN", "ED_EMAIL", "ED_PASSWORD", "ED_REGION")
+ED_ENV_VARS = (
+    "ED_API_TOKEN", "ED_EMAIL", "ED_PASSWORD", "ED_REGION",
+    "ED_LISTENER", "ED_LISTENER_MODEL", "ED_LISTENER_NTFY_TOPIC", "ED_LISTENER_NTFY_SERVER",
+)
 
 
 @pytest.fixture(autouse=True)
-def clean_env(monkeypatch):
-    """Start every test with no Ed credentials or region, whatever the developer's shell has."""
+def clean_env(monkeypatch, tmp_path):
+    """Start every test with no Ed credentials, region or listener settings, whatever
+    the developer's shell has, and a listener database in a temporary directory."""
     for name in ED_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ED_LISTENER_DB", str(tmp_path / "listener.db"))
 
 
 @pytest.fixture(autouse=True)
