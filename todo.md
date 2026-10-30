@@ -102,6 +102,12 @@
 - Precision is the problem: release posts that state due dates ("HW3 Released ... due Oct 19") score 0.85-0.92 on deadline-change rules, and office-hours posts score ~0.7-0.9 on exam rules. Best wordings left only a 0.02-0.04 gap between the true match and the top false one
 - In absolute terms this is a few extra notifications per rule per term (staff post ~35 threads a term), which may be acceptable for a personal notifier biased toward recall
 - The recording rule's only (borderline) true post, a tutorial-files post, scored 0.41: rules about things the course rarely posts can't be checked with preview
+- Rerun on the re-pulled tev1 build (`abc31fdb0bf5`, Ollama 0.40.11), same course and labels plus 2 new staff posts (both false):
+    - Much better separation: gap between the true match and the top false one grew from +0.04 to +0.28 for the best deadline wording (dl-a) and from +0.02 to +0.32 for the best exam wording (ex-a); false positives at 0.8 fell from 4 to 0 (dl-a) and 10 to 1 (dl-c)
+    - Some true scores dropped: one exam post went from 0.93 to 0.78 under ex-a, so it's missed at 0.8 (caught at 0.7 with no false positives); the room-allocation post scores low on exam-info (0.22)
+    - The best threshold depends on the wording (0.7 helps ex-a but adds 2 false positives for the original deadline wording), so 0.8 stays the default and per-rule thresholds from preview matter
+    - The build's context is 8192 tokens (was 2050): a 40,000-char post (6,793 tokens) scored fine, so `BODY_CHARS` was raised from 3000 to 16000 (parent 1000 to 4000); older builds still hit the shrink-and-retry path
+    - `preview_rule`'s description now suggests a threshold inside the gap (e.g. 0.7) when the preview shows one
 - Next: compare `nimble` (once it can be pulled) and a cloud model (`clef:cloud` needs Ollama >= 0.40.5; this machine has 0.40.3) on the same labelled set; label more courses
 
 ## Milestones

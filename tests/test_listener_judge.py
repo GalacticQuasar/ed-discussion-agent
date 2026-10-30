@@ -101,7 +101,7 @@ def test_score_without_rules_skips_the_request(client):
 
 def test_too_long_post_is_retried_shorter_and_stays_shorter(client):
     client.errors = [_too_long()]
-    post = {"body": "x" * 10000}
+    post = {"body": "x" * (judge.BODY_CHARS * 2)}
 
     scores = judge.score(post, [(1, "a"), (2, "b")])
 

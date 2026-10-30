@@ -63,8 +63,10 @@ def preview_rule(
     Returns every scored thread, highest score first. Check that the top
     scores are posts the user wants and that unwanted posts (especially
     students asking about the topic) score clearly lower. If they don't,
-    reword the question and preview again, or pick a threshold in the gap.
-    Only thread posts are scored here, not replies.
+    reword the question and preview again. When there is a clear gap, pass
+    a threshold inside it to create_rule: wanted posts can score as low as
+    0.7-0.8, so e.g. 0.7 is reasonable if every unwanted post scores well
+    below it. Only thread posts are scored here, not replies.
     """
     limit = max(1, min(limit, PREVIEW_MAX))
     threads = []

@@ -25,10 +25,11 @@ DEFAULT_KEEP_ALIVE = "30s"
 # Provisional, biased toward recall: in the first eval (see todo.md) true
 # matches scored 0.93+ but some false ones reached ~0.9.
 DEFAULT_THRESHOLD = 0.8
-# tev1 has a 2050-token context and System One never truncates input, so
-# bodies are cut to fit. Too long anyway, and score() retries shorter.
-BODY_CHARS = 3000
-PARENT_BODY_CHARS = 1000
+# System One never truncates input, so bodies are cut to fit the model's
+# context: about 5000 tokens of English here, within tev1's 8192 (Ollama
+# 0.40.11's build). Older builds had 2050; on a length error score() retries shorter.
+BODY_CHARS = 16000
+PARENT_BODY_CHARS = 4000
 _TOO_LONG = re.compile(r"has (\d+) tokens; expected 1\D(\d+)")
 
 
