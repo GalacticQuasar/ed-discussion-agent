@@ -8,7 +8,8 @@ tev1 lets a true answer to one raise the others (a "final exam date" post
 scored 0.10 on a lecture-recording rule alone and 0.98 batched).
 
 Configuration comes from environment variables at call time:
-ED_LISTENER_MODEL (default "tev1:0.8b") and OLLAMA_HOST (read by the SDK).
+ED_LISTENER_MODEL (default "tev1:0.8b"), ED_LISTENER_KEEP_ALIVE (default "30s")
+and OLLAMA_HOST (read by the SDK).
 """
 
 import os
@@ -17,6 +18,10 @@ import re
 import ollama
 
 DEFAULT_MODEL = "tev1:0.8b"
+# How long Ollama keeps the model loaded after each request (its default is
+# 5 minutes). Posts are minutes apart, and the timer restarts on every
+# request, so this only needs to bridge the requests for one post or preview.
+DEFAULT_KEEP_ALIVE = "30s"
 # Provisional, biased toward recall: in the first eval (see todo.md) true
 # matches scored 0.93+ but some false ones reached ~0.9.
 DEFAULT_THRESHOLD = 0.8
@@ -33,6 +38,15 @@ class JudgeError(Exception):
 
 def model():
     return os.environ.get("ED_LISTENER_MODEL") or DEFAULT_MODEL
+
+
+def keep_alive():
+    """ED_LISTENER_KEEP_ALIVE as Ollama takes it: a duration ("30s", "1m") or seconds."""
+    value = os.environ.get("ED_LISTENER_KEEP_ALIVE") or DEFAULT_KEEP_ALIVE
+    try:
+        return float(value)
+    except ValueError:
+        return value
 
 
 def threshold(rule):
@@ -74,7 +88,12 @@ def post_state(post, parent=None, body_chars=BODY_CHARS, parent_chars=PARENT_BOD
 
 
 def _ask(client, name, state, instructions):
-    response = client.systemone(model=name, state=state, questions={"q": {"type": "noul", "instructions": instructions}})
+    response = client.systemone(
+        model=name,
+        state=state,
+        questions={"q": {"type": "noul", "instructions": instructions}},
+        keep_alive=keep_alive(),
+    )
     return response.answers["q"].noul
 
 

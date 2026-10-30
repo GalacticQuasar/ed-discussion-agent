@@ -60,7 +60,7 @@ Dependencies are only `mcp`, `requests`, `uvicorn` (for HTTP mode) and `ollama` 
   - The tool names, parameters and `INSTRUCTIONS` are the server's public interface for users' agents; changing them is a breaking change.
 
 - **`listener/`**: the semantic event listener (in progress; plan and findings in `todo.md`).
-  - `judge.py` scores a post against rules with an Ollama System One model (`ED_LISTENER_MODEL`, default `tev1:0.8b`): one `noul` question per request, because batching lets one true answer raise the others. tev1 has a 2050-token context and System One never truncates, so bodies are cut and retried shorter on a length error.
+  - `judge.py` scores a post against rules with an Ollama System One model (`ED_LISTENER_MODEL`, default `tev1:0.8b`; `ED_LISTENER_KEEP_ALIVE`, default `30s`, instead of Ollama's 5 minutes): one `noul` question per request, because batching lets one true answer raise the others. tev1 has a 2050-token context and System One never truncates, so bodies are cut and retried shorter on a length error.
   - `tools.py` holds MCP tools (`preview_rule`, `create_rule`, `list_rules`, `delete_rule`) that `server.main()` registers only when `ED_LISTENER=1`, appending to `INSTRUCTIONS`. They never write to Ed; rule tools write only the local database. Without the flag the published tool list is unchanged.
   - `store.py` is the SQLite database (`ED_LISTENER_DB`, default in the per-user data directory) shared by the MCP server and the daemon: rules, cursors, judgments, sent notifications, and settings (the generated ntfy topic and the daemon heartbeat).
   - `notify.py` builds ntfy links and sends notifications with ntfy's JSON publishing (`ED_LISTENER_NTFY_SERVER`, default `https://ntfy.sh`).

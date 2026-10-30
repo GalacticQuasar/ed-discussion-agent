@@ -17,8 +17,8 @@ class FakeClient:
         self.errors = []
         self.calls = []
 
-    def systemone(self, model, state, questions):
-        self.calls.append({"model": model, "state": state, "questions": questions})
+    def systemone(self, model, state, questions, keep_alive=None):
+        self.calls.append({"model": model, "state": state, "questions": questions, "keep_alive": keep_alive})
         if self.errors:
             raise self.errors.pop(0)
         return ollama.SystemOneResponse(
@@ -36,7 +36,6 @@ def _too_long(used=2546, limit=2050):
 def client(monkeypatch):
     fake = FakeClient()
     monkeypatch.setattr(judge, "_client", lambda: fake)
-    monkeypatch.delenv("ED_LISTENER_MODEL", raising=False)
     return fake
 
 
@@ -78,6 +77,21 @@ def test_score_uses_configured_model(client, monkeypatch):
     judge.score({}, [(1, "q")])
 
     assert client.calls[0]["model"] == "clef:cloud"
+
+
+def test_score_keeps_the_model_loaded_briefly_by_default(client):
+    judge.score({}, [(1, "q")])
+
+    assert client.calls[0]["keep_alive"] == "30s"
+
+
+@pytest.mark.parametrize("value, sent", [("2m", "2m"), ("10", 10.0), ("0", 0.0)])
+def test_score_uses_configured_keep_alive(client, monkeypatch, value, sent):
+    monkeypatch.setenv("ED_LISTENER_KEEP_ALIVE", value)
+
+    judge.score({}, [(1, "q")])
+
+    assert client.calls[0]["keep_alive"] == sent
 
 
 def test_score_without_rules_skips_the_request(client):

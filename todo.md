@@ -113,6 +113,7 @@
     - Ollama auto-updated to 0.40.11 and refused the old `tev1` download ("downloaded in a format that is no longer supported") until re-pulled; the re-pull is a new build (`abc31fdb0bf5`), so the eval above should be rerun. Startup now checks the model with a real System One request, since `ollama show` succeeds on such a download
     - The end-to-end run also showed the precision problem: "homework released" fired on grade-release and solutions posts
 5. README section and minor release; then Discord notifier
+    - README "Notifications (experimental)" section written (setup, systemd example, privacy, limitations, config); not released yet (would be 0.2.0)
 
 ## Tests
 - System One and ntfy mocked with `responses`; a canned websocket feed replayed through the pipeline
