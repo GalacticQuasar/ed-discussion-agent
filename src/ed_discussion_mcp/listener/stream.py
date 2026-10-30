@@ -10,6 +10,7 @@ from ..ed_api import get_token, stream_url
 log = logging.getLogger(__name__)
 
 RECONNECT_DELAY = 5
+MAX_RECONNECT_DELAY = 60  # the delay doubles after each failed attempt, up to this
 # Ed rejects an invalid or expired token at the handshake with 400 (and a
 # missing one with 401). aiohttp drops the body, so the "bad_token" code
 # that ed_api.EdAPIError checks isn't available here.
@@ -38,6 +39,7 @@ async def listen(course_ids, on_message, on_connect=None, reconnect=None):
     when the token is rejected and came from email/password.
     """
     token, refreshable = get_token()
+    delay = RECONNECT_DELAY
     async with aiohttp.ClientSession() as session:
         while True:
             try:
@@ -47,6 +49,7 @@ async def listen(course_ids, on_message, on_connect=None, reconnect=None):
                     heartbeat=60,
                 ) as ws:
                     log.info("Connected to Ed stream")
+                    delay = RECONNECT_DELAY
                     courses = course_ids() if callable(course_ids) else course_ids
                     pending = {}
                     for i, course_id in enumerate(courses, start=1):
@@ -69,12 +72,13 @@ async def listen(course_ids, on_message, on_connect=None, reconnect=None):
                                   "email/password login.", e.status)
                         raise
                 else:
-                    log.warning("Handshake failed (status %s); retrying in %ss", e.status, RECONNECT_DELAY)
+                    log.warning("Handshake failed (status %s); retrying in %ss", e.status, delay)
             except aiohttp.ClientConnectionError as e:
-                log.warning("Connection failed (%s); retrying in %ss", e, RECONNECT_DELAY)
+                log.warning("Connection failed (%s); retrying in %ss", e, delay)
             else:
-                log.warning("Disconnected; reconnecting in %ss", RECONNECT_DELAY)
-            await asyncio.sleep(RECONNECT_DELAY)
+                log.warning("Disconnected; reconnecting in %ss", delay)
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, MAX_RECONNECT_DELAY)
 
 
 async def _read(ws, pending, on_message, reconnect):

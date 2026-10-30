@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS sent (
     at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+-- Reply counts as of seen_at, to find threads that got replies while disconnected.
+CREATE TABLE IF NOT EXISTS threads (
+    thread_id INTEGER PRIMARY KEY,
+    course_id INTEGER NOT NULL,
+    reply_count INTEGER NOT NULL,
+    seen_at TEXT NOT NULL
+);
+-- Posts whose handling failed (Ed or Ollama unreachable), retried by the daemon.
+CREATE TABLE IF NOT EXISTS retries (
+    event_key TEXT PRIMARY KEY,
+    thread_id INTEGER NOT NULL,
+    comment_id INTEGER,
+    error TEXT NOT NULL,
+    attempts INTEGER NOT NULL,
+    first_failed_at TEXT NOT NULL
+);
 """
 
 
@@ -199,3 +215,39 @@ def unsent(conn, pending_before):
         (pending_before,),
     )
     return [(row["event_key"], json.loads(row["notification"])) for row in rows]
+
+
+def reply_counts(conn, course_id):
+    """{thread_id: (reply_count, seen_at)} for a course's known threads."""
+    rows = conn.execute("SELECT thread_id, reply_count, seen_at FROM threads WHERE course_id = ?", (course_id,))
+    return {row["thread_id"]: (row["reply_count"], row["seen_at"]) for row in rows}
+
+
+def set_reply_counts(conn, course_id, counts, seen_at, keep_existing=False):
+    """Store reply counts ({thread_id: count}) as of seen_at. With keep_existing,
+    threads already known are left alone."""
+    verb = "INSERT OR IGNORE" if keep_existing else "INSERT OR REPLACE"
+    with conn:
+        conn.executemany(
+            f"{verb} INTO threads (thread_id, course_id, reply_count, seen_at) VALUES (?, ?, ?, ?)",
+            [(thread_id, course_id, count, seen_at) for thread_id, count in counts.items()],
+        )
+
+
+def add_retry(conn, event_key, thread_id, comment_id, error):
+    with conn:
+        conn.execute(
+            "INSERT INTO retries (event_key, thread_id, comment_id, error, attempts, first_failed_at)"
+            " VALUES (?, ?, ?, ?, 1, ?)"
+            " ON CONFLICT (event_key) DO UPDATE SET error = excluded.error, attempts = attempts + 1",
+            (event_key, thread_id, comment_id, error, now()),
+        )
+
+
+def retries(conn):
+    return [dict(row) for row in conn.execute("SELECT * FROM retries ORDER BY first_failed_at")]
+
+
+def remove_retry(conn, event_key):
+    with conn:
+        conn.execute("DELETE FROM retries WHERE event_key = ?", (event_key,))

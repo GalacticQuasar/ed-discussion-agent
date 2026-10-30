@@ -9,8 +9,13 @@ from contextlib import closing
 
 import pytest
 
+from datetime import datetime, timedelta, timezone
+
+from mcp.server.mcpserver.exceptions import ToolError
+
+from ed_discussion_mcp import ed_api
 from ed_discussion_mcp.listener import daemon, judge, notify, store
-from test_server_tools import COURSE, make_thread
+from test_server_tools import COURSE, make_reply, make_thread
 
 STAFF = {"id": 20, "name": "TA", "course_role": "staff"}
 STUDENT = {"id": 10, "name": "Student", "course_role": "student"}
@@ -28,12 +33,16 @@ def conn():
 
 @pytest.fixture
 def ed(monkeypatch):
-    """Threads served by id from /threads/{id}, and the user's courses."""
+    """Threads served by id from /threads/{id}, and the user's courses.
+    Paths in .fail raise that exception instead."""
     threads = {}
     requests = []
+    fail = {}
 
     def get(path, params=None):
         requests.append(path)
+        if path in fail:
+            raise fail[path]
         if path.startswith("/threads/"):
             thread = threads[int(path.rsplit("/", 1)[1])]
             return {"thread": thread, "users": [STAFF, STUDENT]}
@@ -44,7 +53,7 @@ def ed(monkeypatch):
 
     monkeypatch.setattr(daemon.server, "_get", get)
     monkeypatch.setattr(daemon.server, "_call", lambda fn: [{"id": COURSE, "code": "CS 101"}])
-    return type("Ed", (), {"threads": threads, "requests": requests})
+    return type("Ed", (), {"threads": threads, "requests": requests, "fail": fail})
 
 
 @pytest.fixture
@@ -266,3 +275,173 @@ def test_backfill_processes_missed_threads_oldest_first(conn, ed, scores, sent):
     assert store.get_cursor(conn, COURSE) == "2026-10-12T12:00:00+00:00"
     # The listing already has each thread's author, so nothing is fetched again.
     assert not [path for path in ed.requests if path.startswith("/threads/")]
+
+
+def ed_error(status):
+    """What server._get raises for an Ed error status."""
+    try:
+        raise ed_api.EdAPIError("GET failed", status)
+    except ed_api.EdAPIError as e:
+        try:
+            raise ToolError(str(e)) from e
+        except ToolError as tool_error:
+            return tool_error
+
+
+def test_failed_post_is_retried_by_tick_not_skipped(conn, ed, scores, sent):
+    rule = add_rule(conn)
+    ed.threads[1] = staff_thread(1, "HW3 extended")
+    scores.table[("HW3 extended", rule["id"])] = 0.9
+    ed.fail["/threads/1"] = ToolError("Could not reach Ed")
+    lis = listener(conn)
+
+    run(lis.on_thread(1))
+    assert sent.items == []
+    [retry] = store.retries(conn)
+    assert (retry["event_key"], retry["thread_id"], retry["comment_id"]) == ("thread:1", 1, None)
+
+    # Still failing: the attempt is counted.
+    run(lis.tick())
+    assert store.retries(conn)[0]["attempts"] == 2
+
+    del ed.fail["/threads/1"]
+    run(lis.tick())
+    assert len(sent.items) == 1
+    assert store.retries(conn) == []
+
+
+def test_failed_scoring_is_retried(conn, ed, scores, sent, monkeypatch):
+    add_rule(conn)
+    ed.threads[1] = staff_thread(1, "HW3 extended")
+
+    def ollama_down(post, rules, parent=None):
+        raise judge.JudgeError("Failed to connect to Ollama.")
+
+    monkeypatch.setattr(judge, "score", ollama_down)
+    run(listener(conn).on_thread(1))
+
+    assert store.retries(conn)[0]["error"] == "Failed to connect to Ollama."
+
+
+def test_a_post_that_failed_live_is_still_handled_by_backfill(conn, ed, scores, sent):
+    add_rule(conn)
+    store.advance_cursor(conn, COURSE, "2026-10-01T00:00:00+00:00")
+    ed.threads[1] = staff_thread(1, "HW3 extended")
+    ed.fail["/threads/1"] = ToolError("Could not reach Ed")
+    lis = listener(conn)
+
+    run(lis.on_thread(1))
+    run(lis.backfill())
+
+    assert [c["post"]["title"] for c in scores.calls] == ["HW3 extended"]
+    assert store.retries(conn) == []
+
+
+def test_deleted_posts_are_not_retried(conn, ed, scores, sent):
+    add_rule(conn)
+    ed.fail["/threads/1"] = ed_error(404)
+
+    run(listener(conn).on_thread(1))
+
+    assert store.retries(conn) == []
+
+
+def test_retries_give_up_after_a_day(conn, ed, scores, sent):
+    store.add_retry(conn, "thread:1", 1, None, "Could not reach Ed")
+    old = (datetime.now(timezone.utc) - daemon.RETRY_FOR - timedelta(minutes=1)).isoformat()
+    conn.execute("UPDATE retries SET first_failed_at = ?", (old,))
+    conn.commit()
+
+    run(listener(conn).tick())
+
+    assert store.retries(conn) == []
+    assert ed.requests == []
+
+
+def test_failed_reply_is_retried_from_its_thread(conn, ed, scores, sent):
+    rule = add_rule(conn)
+    ed.threads[1] = make_thread(1, title="Week 7 recording?", answers=[make_reply(5, user_id=20, document="It's up.")])
+    scores.table[("Week 7 recording?", rule["id"])] = 0.9
+    ed.fail["/threads/1"] = ToolError("Could not reach Ed")
+    lis = listener(conn)
+    comment = {"id": 5, "thread_id": 1, "course_id": COURSE, "document": "It's up.", "user": STAFF}
+
+    run(lis.on_comment(comment))
+    del ed.fail["/threads/1"]
+    run(lis.tick())
+
+    [(_, notification)] = sent.items
+    assert notification["url"].endswith("/discussion/1?comment=5")
+
+
+def test_a_reply_retry_whose_comment_was_deleted_is_dropped(conn, ed, scores, sent):
+    add_rule(conn)
+    ed.threads[1] = make_thread(1, title="Week 7 recording?")
+    store.add_retry(conn, "comment:5", 1, 5, "Could not reach Ed")
+
+    run(listener(conn).tick())
+
+    assert store.retries(conn) == []
+    assert scores.calls == []
+
+
+def test_first_backfill_records_reply_counts_without_judging(conn, ed, scores, sent):
+    add_rule(conn)
+    ed.threads[1] = staff_thread(1, "Old", reply_count=3)
+
+    run(listener(conn).backfill())
+
+    assert store.reply_counts(conn, COURSE)[1][0] == 3
+    assert scores.calls == []
+
+
+def test_backfill_judges_staff_replies_posted_while_disconnected(conn, ed, scores, sent):
+    rule = add_rule(conn)
+    store.advance_cursor(conn, COURSE, "2026-10-01T00:00:00+00:00")
+    store.set_reply_counts(conn, COURSE, {1: 1}, "2026-10-12T00:00:00+00:00")
+    ed.threads[1] = make_thread(1, title="Week 7 recording?", created_at="2026-09-20T00:00:00+00:00", reply_count=3,
+                                answers=[
+                                    make_reply(4, user_id=20, created_at="2026-10-11T00:00:00+00:00", document="Soon."),
+                                    make_reply(5, user_id=10, created_at="2026-10-13T00:00:00+00:00", document="+1"),
+                                    make_reply(6, user_id=20, created_at="2026-10-13T01:00:00+00:00", document="It's up."),
+                                ])
+    scores.table[("Week 7 recording?", rule["id"])] = 0.9
+
+    run(listener(conn).backfill())
+
+    # Only the staff reply after the last check; not the older one or the student's.
+    assert [c["post"]["body"] for c in scores.calls] == ["It's up."]
+    [(_, notification)] = sent.items
+    assert notification["url"].endswith("/discussion/1?comment=6")
+    assert store.reply_counts(conn, COURSE)[1][0] == 3
+
+
+def test_backfill_judges_replies_in_threads_created_while_disconnected(conn, ed, scores, sent):
+    add_rule(conn)
+    store.advance_cursor(conn, COURSE, "2026-10-01T00:00:00+00:00")
+    ed.threads[1] = make_thread(1, title="Week 7 recording?", created_at="2026-10-10T00:00:00+00:00", reply_count=1,
+                                answers=[make_reply(4, user_id=20, created_at="2026-10-10T01:00:00+00:00")])
+
+    run(listener(conn).backfill())
+
+    assert [c["parent"] is None for c in scores.calls] == [True, False]
+
+
+def test_backfill_doesnt_fetch_threads_from_before_reply_tracking(conn, ed, scores, sent):
+    add_rule(conn)
+    store.advance_cursor(conn, COURSE, "2026-10-01T00:00:00+00:00")
+    ed.threads[1] = make_thread(1, created_at="2026-09-01T00:00:00+00:00", reply_count=5)
+
+    run(listener(conn).backfill())
+
+    assert ed.requests == [f"/courses/{COURSE}/threads"]
+    assert store.reply_counts(conn, COURSE)[1][0] == 5
+
+
+def test_live_threads_start_reply_tracking(conn, ed, scores, sent):
+    add_rule(conn)
+    ed.threads[1] = staff_thread(1, "Week 7 recording?", reply_count=0)
+
+    run(listener(conn).on_thread(1))
+
+    assert store.reply_counts(conn, COURSE)[1][0] == 0

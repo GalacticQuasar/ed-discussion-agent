@@ -193,7 +193,9 @@ Restart=on-failure
 WantedBy=default.target
 ```
 
-Then run `systemctl --user enable --now ed-listener`, and `journalctl --user -u ed-listener` to see its link and logs. After downtime, the listener catches up on threads posted while it was off.
+Then run `systemctl --user enable --now ed-listener`, and `journalctl --user -u ed-listener` to see its link and logs.
+
+You can stop the listener, lose your connection or close your laptop: when it's back, it catches up on new threads and staff replies posted in the meantime. If Ed or Ollama can't be reached while a post is being checked, it tries that post again every minute for up to a day.
 
 ### Privacy
 
@@ -205,7 +207,7 @@ Then run `systemctl --user enable --now ed-listener`, and `journalctl --user -u 
 
 - The model is small, so expect a few false alarms per rule over a term (for example, a "new homework released" rule can also fire on a "grades released" post). Specific wording helps; the agent's preview shows how a rule scores on recent posts.
 - Only new threads and replies by course staff are checked, not student replies or edits.
-- Replies posted while the listener isn't running are missed (threads are caught up).
+- After a long time off, everything that matched while it was off arrives at once.
 
 ### Listener configuration
 
