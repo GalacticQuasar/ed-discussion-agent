@@ -11,7 +11,7 @@
 - Semantic event listener (0.2.0): rule tools behind `ED_LISTENER=1`, `ed-discussion-mcp listen` daemon with System One judging, backfill, retries and ntfy (plan and findings below)
 
 ## Next
-- Semantic event listeners: notify when a new post matches criteria defined in natural language (plan below)
+- Listener known gaps (see "Known gaps" in the plan below)
 - Semantic retrieval of threads in a course
     - Embed threads and index them locally; keyword search via Ed already exists
     - Could become an MCP tool (adding a tool changes the server's public interface)
@@ -123,7 +123,14 @@
 5. README section and minor release; then Discord notifier
     - `list_notifications` tool: what was sent (with matched rules and scores) and near misses within 0.2 below a rule's threshold
     - Live `thread.new` handling confirmed on real posts (user's "every new post" rule)
-    - README "Notifications (experimental)" section written (setup, systemd example, privacy, limitations, config); not released yet (would be 0.2.0)
+    - README "Notifications (experimental)" section written (setup, systemd example, privacy, limitations, config); released in 0.2.0
+6. Review fixes after 0.2.0 (unreleased): backfill cursors are read on connect (a live post during backfill could advance a cursor past threads missed while disconnected), Ed requests time out after 30 s, a failure loading course codes on connect no longer exits the daemon, `preview_rule` skips private threads on cloud models, and a `once` rule can't fire twice for posts scored at the same time
+
+## Known gaps
+- Live `comment.new` events don't update the `threads` reply counts, so after a restart backfill refetches those threads and rescores replies already judged (no duplicate notifications, since matches are in `sent`, but wasted Ollama time and duplicate `judgments` rows)
+- Backfill lists at most 1000 threads (`_iter_threads`' 10 pages), so staff replies to older threads in very large courses are missed
+- Replies are detected by a rising `reply_count`: a deleted reply plus a new one leaves the count unchanged and the new one is missed
+- A malformed (non-JSON) websocket message would raise out of `stream._read`; Ed hasn't sent one so far
 
 ## Tests
 - System One and ntfy mocked with `responses`; a canned websocket feed replayed through the pipeline
