@@ -135,9 +135,17 @@ def is_cloud():
 
 
 def check_model():
-    """Raise JudgeError unless the configured model can answer a System One question.
+    """Raise JudgeError unless Ollama is reachable and has the configured model.
 
-    Asks a real question: `ollama show` succeeds even for a download that the
-    installed Ollama can no longer load.
+    Uses `ollama show`, which doesn't load the model, so startup stays fast.
+    It passes for a download the installed Ollama can no longer run (seen
+    after an Ollama update); that only shows up as errors when posts are scored.
     """
-    score({"title": "Startup check"}, [(0, "Is this a startup check?")])
+    name = model()
+    try:
+        _client().show(name)
+    except ConnectionError as e:
+        raise JudgeError(f"{e} (OLLAMA_HOST={os.environ.get('OLLAMA_HOST') or 'default'})") from e
+    except ollama.ResponseError as e:
+        hint = f" (run `ollama pull {name}`)" if e.status_code == 404 else ""
+        raise JudgeError(f"Ollama can't find {name}: {e.error}{hint}") from e

@@ -265,6 +265,7 @@ class Listener:
 
 def main():
     """Entry point for `ed-discussion-mcp listen`."""
+    log.info("Starting the listener (ed-discussion-mcp %s)", __version__)
     try:
         ed_api.get_token()
         judge.check_model()

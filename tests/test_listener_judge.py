@@ -17,6 +17,11 @@ class FakeClient:
         self.errors = []
         self.calls = []
 
+    def show(self, model):
+        self.calls.append({"show": model})
+        if self.errors:
+            raise self.errors.pop(0)
+
     def systemone(self, model, state, questions, keep_alive=None):
         self.calls.append({"model": model, "state": state, "questions": questions, "keep_alive": keep_alive})
         if self.errors:
@@ -130,3 +135,16 @@ def test_unreachable_ollama_raises_judge_error(client):
 
     with pytest.raises(judge.JudgeError, match="Failed to connect"):
         judge.score({}, [(1, "q")])
+
+
+def test_check_model_only_asks_ollama_about_the_model(client):
+    judge.check_model()
+
+    assert client.calls == [{"show": "tev1:0.8b"}]
+
+
+def test_check_model_suggests_pulling_a_missing_model(client):
+    client.errors = [ollama.ResponseError("model 'tev1:0.8b' not found", 404)]
+
+    with pytest.raises(judge.JudgeError, match=r"ollama pull tev1:0\.8b"):
+        judge.check_model()
