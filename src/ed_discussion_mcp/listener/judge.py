@@ -8,8 +8,8 @@ tev1 lets a true answer to one raise the others (a "final exam date" post
 scored 0.10 on a lecture-recording rule alone and 0.98 batched).
 
 Configuration comes from environment variables at call time:
-ED_LISTENER_MODEL (default "tev1:0.8b"), ED_LISTENER_KEEP_ALIVE (default "30s")
-and OLLAMA_HOST (read by the SDK).
+ED_LISTENER_MODEL (default "tev1:0.8b"), ED_LISTENER_KEEP_ALIVE (default "30s"),
+ED_LISTENER_CLOUD_PRIVATE (see may_judge_private) and OLLAMA_HOST (read by the SDK).
 """
 
 import os
@@ -132,6 +132,12 @@ def score(post, rules, parent=None):
 def is_cloud():
     """Whether the configured model runs on Ollama's servers rather than locally."""
     return model().endswith(("-cloud", ":cloud"))
+
+
+def may_judge_private():
+    """Whether private posts may be scored: always on a local model, and on a
+    cloud one only with ED_LISTENER_CLOUD_PRIVATE=1."""
+    return not is_cloud() or os.environ.get("ED_LISTENER_CLOUD_PRIVATE") == "1"
 
 
 def check_model():

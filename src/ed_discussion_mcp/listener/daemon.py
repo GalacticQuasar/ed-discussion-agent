@@ -17,7 +17,6 @@ sending run in worker threads.
 
 import asyncio
 import logging
-import os
 import sys
 from collections import OrderedDict
 from contextlib import closing
@@ -217,7 +216,7 @@ class Listener:
         rules = self.matching_rules(event)
         if not rules:
             return
-        if event["is_private"] and judge.is_cloud() and os.environ.get("ED_LISTENER_CLOUD_PRIVATE") != "1":
+        if event["is_private"] and not judge.may_judge_private():
             log.info("Skipping private %s: %s is a cloud model", event["key"], judge.model())
             return
         scores = await asyncio.to_thread(

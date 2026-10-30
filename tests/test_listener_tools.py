@@ -58,6 +58,27 @@ def test_preview_staff_only_skips_student_threads(monkeypatch, scores):
     assert [t["title"] for t in result["threads"]] == ["Thread 2"]
 
 
+def test_preview_skips_private_threads_on_cloud_models(monkeypatch, scores):
+    monkeypatch.setenv("ED_LISTENER_MODEL", "clef:cloud")
+    FakeEd(monkeypatch, [make_thread(1, is_private=True), make_thread(2)])
+
+    result = tools.preview_rule(COURSE, "q")
+
+    assert [post["title"] for post, _ in scores["calls"]] == ["Thread 2"]
+    assert result["skipped_private"] == 1
+
+
+def test_preview_scores_private_threads_on_cloud_models_when_allowed(monkeypatch, scores):
+    monkeypatch.setenv("ED_LISTENER_MODEL", "clef:cloud")
+    monkeypatch.setenv("ED_LISTENER_CLOUD_PRIVATE", "1")
+    FakeEd(monkeypatch, [make_thread(1, is_private=True)])
+
+    result = tools.preview_rule(COURSE, "q")
+
+    assert result["scored"] == 1
+    assert "skipped_private" not in result
+
+
 def test_preview_respects_limit_and_threshold(monkeypatch, scores):
     FakeEd(monkeypatch, [make_thread(i) for i in range(1, 6)])
     scores["Thread 1"] = 0.5

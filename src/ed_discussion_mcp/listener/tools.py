@@ -69,13 +69,18 @@ def preview_rule(
     reword the question and preview again. When there is a clear gap, pass
     a threshold inside it to create_rule: wanted posts can score as low as
     0.7-0.8, so e.g. 0.7 is reasonable if every unwanted post scores well
-    below it. Only thread posts are scored here, not replies.
+    below it. Only thread posts are scored here, not replies. Private threads
+    are skipped on a cloud model, as the listener skips them.
     """
     limit = max(1, min(limit, PREVIEW_MAX))
     threads = []
+    skipped_private = 0
     for thread in server._iter_threads(course_id, max_pages=3):
         summary = server._summary(thread)
         if staff_only and not summary["is_staff"]:
+            continue
+        if thread.get("is_private") and not judge.may_judge_private():
+            skipped_private += 1
             continue
         threads.append((thread, summary))
         if len(threads) >= limit:
@@ -103,13 +108,16 @@ def preview_rule(
             "url": summary["url"],
         })
     scored.sort(key=lambda s: s["score"], reverse=True)
-    return {
+    result = {
         "model": judge.model(),
         "threshold": threshold,
         "scored": len(scored),
         "would_notify": sum(s["would_notify"] for s in scored),
         "threads": scored,
     }
+    if skipped_private:
+        result["skipped_private"] = skipped_private
+    return result
 
 
 def _status(conn):
