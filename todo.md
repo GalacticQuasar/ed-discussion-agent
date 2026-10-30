@@ -3,7 +3,7 @@
     - Results include Ed thread links, and the server instructions tell agents to cite them
     - Filters: category, thread type, pinned, staff author, date
     - Region support, stdio and HTTP (bearer auth) modes
-    - Published on PyPI (0.2.0): `uvx ed-discussion-mcp`
+    - Published on PyPI (0.2.1): `uvx ed-discussion-mcp`
 - Tests (`uv run pytest`): `ed_api` credentials, regions and errors; `server._call()` re-login and error conversion
     - Tools (`tests/test_server_tools.py`): result shaping, filters, paging, `get_thread` lookup
     - Not yet covered: `get_courses` dashboard sorting and `http_transport`
@@ -124,7 +124,7 @@
     - `list_notifications` tool: what was sent (with matched rules and scores) and near misses within 0.2 below a rule's threshold
     - Live `thread.new` handling confirmed on real posts (user's "every new post" rule)
     - README "Notifications (experimental)" section written (setup, systemd example, privacy, limitations, config); released in 0.2.0
-6. Review fixes after 0.2.0 (unreleased): backfill cursors are read on connect (a live post during backfill could advance a cursor past threads missed while disconnected), Ed requests time out after 30 s, a failure loading course codes on connect no longer exits the daemon, `preview_rule` skips private threads on cloud models, and a `once` rule can't fire twice for posts scored at the same time
+6. Review fixes (0.2.1): backfill cursors are read on connect (a live post during backfill could advance a cursor past threads missed while disconnected), Ed requests time out after 30 s, a failure loading course codes on connect no longer exits the daemon, `preview_rule` skips private threads on cloud models, and a `once` rule can't fire twice for posts scored at the same time
 
 ## Known gaps
 - Live `comment.new` events don't update the `threads` reply counts, so after a restart backfill refetches those threads and rescores replies already judged (no duplicate notifications, since matches are in `sent`, but wasted Ollama time and duplicate `judgments` rows)
