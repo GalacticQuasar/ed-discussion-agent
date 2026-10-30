@@ -120,6 +120,8 @@
     - Ollama auto-updated to 0.40.11 and refused the old `tev1` download ("downloaded in a format that is no longer supported") until re-pulled; the re-pull is a new build (`abc31fdb0bf5`), so the eval above should be rerun. `ollama show` succeeds on such a download; startup checks only with `show` (instant, no model load), so this case shows up as scoring errors on the first post
     - The end-to-end run also showed the precision problem: "homework released" fired on grade-release and solutions posts
 5. README section and minor release; then Discord notifier
+    - `list_notifications` tool: what was sent (with matched rules and scores) and near misses within 0.2 below a rule's threshold
+    - Live `thread.new` handling confirmed on real posts (user's "every new post" rule)
     - README "Notifications (experimental)" section written (setup, systemd example, privacy, limitations, config); not released yet (would be 0.2.0)
 
 ## Tests

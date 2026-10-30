@@ -32,6 +32,9 @@ Notifications (listener tools):
   posted") and "always" for standing rules ("any deadline change").
 - After creating a rule, tell the user the ntfy subscribe link and whether
   the listener is running (both in the create_rule and list_rules results).
+- list_notifications shows what rules caught recently. To tune a rule that
+  misses posts or fires too often, look at its near misses and the scores of
+  what it caught, then adjust the threshold or wording (delete and recreate).
 """
 
 PREVIEW = ToolAnnotations(read_only_hint=True, open_world_hint=True)
@@ -174,6 +177,71 @@ def list_rules() -> dict:
         return {"rules": [_rule_view(r) for r in store.list_rules(conn)], **_status(conn)}
 
 
+NEAR_MISS_MARGIN = 0.2
+
+
+def list_notifications(
+    since: str | None = None,
+    rule_id: int | None = None,
+    include_near_misses: bool = False,
+    limit: int = 50,
+) -> dict:
+    """Notifications the listener sent, newest first, with the rules each matched.
+
+    since: ISO date or datetime (default: the last 7 days).
+    rule_id: only notifications (and near misses) for this rule.
+    include_near_misses: also return posts that scored below a rule's
+    threshold by less than 0.2, which shows what a rule almost caught and
+    helps choose a threshold. Each comes with its score and the rule's threshold.
+    """
+    since_dt = server._parse_since(since) or datetime.now(timezone.utc) - timedelta(days=7)
+    since_iso = since_dt.astimezone(timezone.utc).isoformat(timespec="seconds")
+    limit = max(1, min(limit, 200))
+    with closing(store.connect()) as conn:
+        rules = {r["id"]: r for r in store.list_rules(conn)}
+
+        def rule_view(rid):
+            rule = rules.get(rid)
+            return {"rule_id": rid, "request": rule["request"] if rule else "(deleted rule)"}
+
+        scores = {(j["event_key"], j["rule_id"]): j["score"] for j in reversed(store.judgments_since(conn, since_iso))}
+        notifications = []
+        for row in store.sent_since(conn, since_iso):
+            if rule_id is not None and rule_id not in row["rule_ids"]:
+                continue
+            notifications.append({
+                "title": row["notification"]["title"],
+                "url": row["notification"]["url"],
+                "at": row["at"],
+                "delivered": row["status"] == "sent",
+                "matched": [{**rule_view(r), "score": scores.get((row["event_key"], r))} for r in row["rule_ids"]],
+            })
+        result = {"since": since_iso, "notifications": notifications[:limit]}
+
+        if include_near_misses:
+            near, seen = [], set()
+            for j in store.judgments_since(conn, since_iso):
+                rule = rules.get(j["rule_id"])
+                key = (j["event_key"], j["rule_id"])
+                if not rule or key in seen or (rule_id is not None and j["rule_id"] != rule_id):
+                    continue
+                seen.add(key)  # newest score per post and rule (a retried post can be scored twice)
+                threshold = judge.threshold(rule)
+                if threshold - NEAR_MISS_MARGIN <= j["score"] < threshold:
+                    near.append({
+                        "title": j["title"],
+                        "url": j["url"],
+                        "at": j["at"],
+                        **rule_view(j["rule_id"]),
+                        "score": round(j["score"], 3),
+                        "threshold": threshold,
+                    })
+            near.sort(key=lambda n: n["score"], reverse=True)
+            result["near_misses"] = near[:limit]
+        return result
+
+
+
 def delete_rule(rule_id: int) -> dict:
     """Delete a notification rule by id (see list_rules)."""
     with closing(store.connect()) as conn:
@@ -187,6 +255,7 @@ def register(mcp):
     mcp.add_tool(preview_rule, annotations=PREVIEW)
     mcp.add_tool(create_rule, annotations=LOCAL_WRITE)
     mcp.add_tool(list_rules, annotations=LOCAL_READ)
+    mcp.add_tool(list_notifications, annotations=LOCAL_READ)
     mcp.add_tool(delete_rule, annotations=LOCAL_DELETE)
     # MCPServer has no public setter for instructions.
     mcp._lowlevel_server.instructions = (mcp.instructions or "") + INSTRUCTIONS

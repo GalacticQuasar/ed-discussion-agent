@@ -86,7 +86,7 @@ def test_register_adds_tools_and_instructions():
     tools.register(mcp)
 
     names = {t.name for t in asyncio.run(mcp.list_tools())}
-    assert names == {"preview_rule", "create_rule", "list_rules", "delete_rule"}
+    assert names == {"preview_rule", "create_rule", "list_rules", "list_notifications", "delete_rule"}
     assert mcp.instructions.startswith("Base.")
     assert "preview_rule" in mcp.instructions
 
@@ -152,3 +152,78 @@ def test_delete_rule(my_courses):
     assert tools.delete_rule(rule_id) == {"deleted": rule_id}
     with pytest.raises(ToolError, match="No rule"):
         tools.delete_rule(rule_id)
+
+
+def _notified(conn, key, rules, title, scores):
+    """Record what the daemon records for a post that notified."""
+    store.record_judgments(conn, key, scores, "tev1:0.8b", title, f"https://ed/{key}")
+    store.record_match(conn, key, rules, {"title": title, "message": "m", "url": f"https://ed/{key}"})
+    store.mark_sent(conn, key, ok=True)
+
+
+def test_list_notifications_shows_what_fired_with_scores():
+    with closing(store.connect()) as conn:
+        rule = store.add_rule(conn, "extensions", "q", [COURSE], False, "always")
+        _notified(conn, "thread:1", [rule], "CS 101: HW3 extended", {rule["id"]: 0.93})
+
+    result = tools.list_notifications()
+
+    [notification] = result["notifications"]
+    assert notification["title"] == "CS 101: HW3 extended"
+    assert notification["url"] == "https://ed/thread:1"
+    assert notification["delivered"] is True
+    assert notification["matched"] == [{"rule_id": rule["id"], "request": "extensions", "score": 0.93}]
+    assert "near_misses" not in result
+
+
+def test_list_notifications_near_misses_are_just_below_the_threshold():
+    with closing(store.connect()) as conn:
+        rule = store.add_rule(conn, "extensions", "q", [COURSE], False, "always", 0.8)
+        for key, score in [("thread:1", 0.75), ("thread:2", 0.55), ("thread:3", 0.62)]:
+            store.record_judgments(conn, key, {rule["id"]: score}, "tev1:0.8b", f"post {key}", f"https://ed/{key}")
+
+    result = tools.list_notifications(include_near_misses=True)
+
+    assert [(n["title"], n["score"], n["threshold"]) for n in result["near_misses"]] == [
+        ("post thread:1", 0.75, 0.8),
+        ("post thread:3", 0.62, 0.8),
+    ]
+
+
+def test_list_notifications_filters_by_rule_and_labels_deleted_rules():
+    with closing(store.connect()) as conn:
+        a = store.add_rule(conn, "a", "q", [COURSE], False, "always")
+        b = store.add_rule(conn, "b", "q", [COURSE], False, "always")
+        _notified(conn, "thread:1", [a], "one", {a["id"]: 0.9})
+        _notified(conn, "thread:2", [b], "two", {b["id"]: 0.9})
+        store.delete_rule(conn, b["id"])
+
+    assert [n["title"] for n in tools.list_notifications(rule_id=a["id"])["notifications"]] == ["one"]
+    two = next(n for n in tools.list_notifications()["notifications"] if n["title"] == "two")
+    assert two["matched"][0]["request"] == "(deleted rule)"
+
+
+def test_list_notifications_defaults_to_the_last_week():
+    with closing(store.connect()) as conn:
+        rule = store.add_rule(conn, "a", "q", [COURSE], False, "always")
+        _notified(conn, "thread:1", [rule], "old", {rule["id"]: 0.9})
+        conn.execute("UPDATE sent SET at = '2026-01-01T00:00:00+00:00'")
+        conn.commit()
+
+    assert tools.list_notifications()["notifications"] == []
+    assert [n["title"] for n in tools.list_notifications(since="2025-12-01")["notifications"]] == ["old"]
+
+
+def test_old_databases_gain_the_judgment_title_columns(tmp_path, monkeypatch):
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE judgments (event_key TEXT NOT NULL, rule_id INTEGER NOT NULL, score REAL NOT NULL,"
+                " model TEXT NOT NULL, at TEXT NOT NULL)")
+    old.close()
+    monkeypatch.setenv("ED_LISTENER_DB", str(path))
+
+    with closing(store.connect()) as conn:
+        store.record_judgments(conn, "thread:1", {1: 0.5}, "m", "title", "url")
+        assert store.judgments_since(conn, "2000")[0]["title"] == "title"

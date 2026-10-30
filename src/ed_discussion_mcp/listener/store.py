@@ -26,7 +26,15 @@ CREATE TABLE IF NOT EXISTS rules (
     fired_at TEXT
 );
 CREATE TABLE IF NOT EXISTS cursors (course_id INTEGER PRIMARY KEY, last_seen_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS judgments (event_key TEXT NOT NULL, rule_id INTEGER NOT NULL, score REAL NOT NULL, model TEXT NOT NULL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS judgments (
+    event_key TEXT NOT NULL,
+    rule_id INTEGER NOT NULL,
+    score REAL NOT NULL,
+    model TEXT NOT NULL,
+    at TEXT NOT NULL,
+    title TEXT,  -- the post, for list_notifications' near misses
+    url TEXT
+);
 CREATE TABLE IF NOT EXISTS sent (
     event_key TEXT PRIMARY KEY,
     rule_ids TEXT NOT NULL,
@@ -80,7 +88,20 @@ def connect():
     # WAL lets the daemon write while the MCP server reads.
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+# Columns added after a table first shipped: (table, column, type).
+_ADDED_COLUMNS = [("judgments", "title", "TEXT"), ("judgments", "url", "TEXT")]
+
+
+def _migrate(conn):
+    """Add columns that databases created by earlier versions lack."""
+    for table, column, kind in _ADDED_COLUMNS:
+        if column not in {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}:
+            with conn:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
 
 
 def _rule(row):
@@ -167,13 +188,28 @@ def advance_cursor(conn, course_id, seen_at):
         conn.execute("INSERT OR REPLACE INTO cursors (course_id, last_seen_at) VALUES (?, ?)", (course_id, seen_at))
 
 
-def record_judgments(conn, event_key, scores, model):
+def record_judgments(conn, event_key, scores, model, title=None, url=None):
     at = now()
     with conn:
         conn.executemany(
-            "INSERT INTO judgments (event_key, rule_id, score, model, at) VALUES (?, ?, ?, ?, ?)",
-            [(event_key, rule_id, score, model, at) for rule_id, score in scores.items()],
+            "INSERT INTO judgments (event_key, rule_id, score, model, at, title, url) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [(event_key, rule_id, score, model, at, title, url) for rule_id, score in scores.items()],
         )
+
+
+def judgments_since(conn, since):
+    """Scores recorded at or after since (an ISO time), newest first."""
+    rows = conn.execute("SELECT * FROM judgments WHERE at >= ? ORDER BY at DESC, rowid DESC", (since,))
+    return [dict(row) for row in rows]
+
+
+def sent_since(conn, since):
+    """Notifications claimed at or after since (an ISO time), newest first."""
+    rows = conn.execute("SELECT * FROM sent WHERE at >= ? ORDER BY at DESC, rowid DESC", (since,))
+    return [
+        {**dict(row), "rule_ids": json.loads(row["rule_ids"]), "notification": json.loads(row["notification"])}
+        for row in rows
+    ]
 
 
 def already_sent(conn, event_key):

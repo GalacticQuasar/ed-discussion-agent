@@ -29,7 +29,7 @@ Keep in mind that the agent sees whatever your Ed account can see, including pri
 
 Every result includes the author's role (student or staff), timestamps, whether the post was edited, and a link to the thread.
 
-With `ED_LISTENER=1`, four more tools set up [notifications](#notifications-experimental): `preview_rule`, `create_rule`, `list_rules` and `delete_rule`.
+With `ED_LISTENER=1`, five more tools set up and review [notifications](#notifications-experimental): `preview_rule`, `create_rule`, `list_rules`, `list_notifications` and `delete_rule`.
 
 ## Setup
 
@@ -177,6 +177,8 @@ Ask your agent "notify me if any deadline changes in CS 180" or "tell me when th
    It prints a link and a QR code. Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy), [iOS](https://apps.apple.com/app/ntfy/id1625396347), or [the web app](https://ntfy.sh/app)), and scan the code or open the link to subscribe. No account is needed. Your agent can show the link again any time (`list_rules`).
 
 4. Ask your agent for a notification. Rules apply as soon as they're saved; there's no need to restart the listener.
+
+Later, ask "what did my notifications catch this week?" The agent can list what was sent and which posts almost matched, which helps when a rule fires too often or misses something.
 
 The listener only notifies while it's running. To keep it running in the background, run it as a service. On Linux, for example, save your token in `~/.config/ed-listener.env` as `ED_API_TOKEN=your_token` (run `chmod 600` on that file), and create `~/.config/systemd/user/ed-listener.service`:
 

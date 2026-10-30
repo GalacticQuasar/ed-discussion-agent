@@ -223,7 +223,7 @@ class Listener:
         scores = await asyncio.to_thread(
             judge.score, event["post"], [(r["id"], r["instructions"]) for r in rules], event["parent"]
         )
-        store.record_judgments(self.conn, event["key"], scores, judge.model())
+        store.record_judgments(self.conn, event["key"], scores, judge.model(), self.title(event), event["url"])
         matched = [r for r in rules if scores[r["id"]] >= judge.threshold(r)]
         log.info("%s scored %s", event["key"], {r: round(s, 2) for r, s in scores.items()})
         if not matched:
@@ -232,12 +232,14 @@ class Listener:
         if store.record_match(self.conn, event["key"], matched, notification):
             await self.send(event["key"], notification)
 
-    def notification(self, event, rules):
+    def title(self, event):
         code = self.course_codes.get(event["course_id"], str(event["course_id"]))
         if event["kind"] == "reply":
-            title = f"{code}: staff reply in \"{event['parent']['title']}\""
-        else:
-            title = f"{code}: {event['post']['title']}"
+            return f"{code}: staff reply in \"{event['parent']['title']}\""
+        return f"{code}: {event['post']['title']}"
+
+    def notification(self, event, rules):
+        title = self.title(event)
         message = "Matched: " + "; ".join(r["request"] for r in rules)
         # Private posts go out with their title only: ntfy topics are readable
         # by anyone who has the name.
