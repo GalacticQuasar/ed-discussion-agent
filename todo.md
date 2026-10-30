@@ -3,11 +3,12 @@
     - Results include Ed thread links, and the server instructions tell agents to cite them
     - Filters: category, thread type, pinned, staff author, date
     - Region support, stdio and HTTP (bearer auth) modes
-    - Published on PyPI (0.1.2): `uvx ed-discussion-mcp`
+    - Published on PyPI (0.2.0): `uvx ed-discussion-mcp`
 - Tests (`uv run pytest`): `ed_api` credentials, regions and errors; `server._call()` re-login and error conversion
     - Tools (`tests/test_server_tools.py`): result shaping, filters, paging, `get_thread` lookup
     - Not yet covered: `get_courses` dashboard sorting and `http_transport`
-- Real-time new post stream over Ed's websocket (prototype: `experiments/ed_stream.py`, `experiments/watch_posts.py`)
+- Real-time new post stream over Ed's websocket (now `listener/stream.py`; `experiments/watch_posts.py` still uses it)
+- Semantic event listener (0.2.0): rule tools behind `ED_LISTENER=1`, `ed-discussion-mcp listen` daemon with System One judging, backfill, retries and ntfy (plan and findings below)
 
 ## Next
 - Semantic event listeners: notify when a new post matches criteria defined in natural language (plan below)
