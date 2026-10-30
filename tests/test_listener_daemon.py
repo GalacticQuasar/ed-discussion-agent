@@ -5,6 +5,7 @@ file (see conftest). The websocket itself isn't exercised.
 """
 
 import asyncio
+import threading
 from contextlib import closing
 
 import pytest
@@ -275,6 +276,35 @@ def test_backfill_processes_missed_threads_oldest_first(conn, ed, scores, sent):
     assert store.get_cursor(conn, COURSE) == "2026-10-12T12:00:00+00:00"
     # The listing already has each thread's author, so nothing is fetched again.
     assert not [path for path in ed.requests if path.startswith("/threads/")]
+
+
+def test_a_live_thread_during_backfill_doesnt_hide_missed_threads(conn, ed, scores, sent, monkeypatch):
+    add_rule(conn)
+    store.advance_cursor(conn, COURSE, "2026-10-10T12:00:00+00:00")
+    ed.threads[2] = staff_thread(2, "Missed", created_at="2026-10-11T12:00:00+00:00")
+    ed.threads[3] = staff_thread(3, "Live", created_at="2026-10-12T12:00:00+00:00")
+    listing_may_finish = threading.Event()
+    get = daemon.server._get
+
+    def slow_listing(path, params=None):
+        if path.endswith("/threads"):
+            listing_may_finish.wait(5)
+        return get(path, params)
+
+    monkeypatch.setattr(daemon.server, "_get", slow_listing)
+
+    async def connect_then_live_event():
+        lis = listener(conn)
+        await lis.on_connect()
+        # The live event advances the cursor while the listing is still loading.
+        await lis.on_message({"type": "thread.new", "data": {"thread": {"id": 3}}})
+        listing_may_finish.set()
+        async with lis._backfilling:
+            pass
+
+    run(connect_then_live_event())
+
+    assert sorted(c["post"]["title"] for c in scores.calls) == ["Live", "Missed"]
 
 
 def ed_error(status):

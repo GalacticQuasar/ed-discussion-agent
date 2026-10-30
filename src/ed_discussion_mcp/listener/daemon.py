@@ -254,24 +254,31 @@ class Listener:
 
     # Backfill and housekeeping
 
-    async def backfill(self):
+    def cursors(self):
+        return {course_id: store.get_cursor(self.conn, course_id) for course_id in self.subscribed}
+
+    async def backfill(self, cursors=None):
         """Catch up on each watched course: threads created since its cursor
         (oldest first), then staff replies in threads whose reply count rose.
+
+        cursors are the courses' cursors as of the connect (default: now). Live
+        events advance a cursor while backfill runs, and reading it afterwards
+        would skip the threads missed before them.
 
         A course seen for the first time starts from now, so creating a rule
         never notifies about old posts.
         """
+        cursors = self.cursors() if cursors is None else cursors
         async with self._backfilling:  # a reconnect mid-backfill mustn't start a second one
             for course_id in sorted(self.subscribed):
                 try:
-                    await self._backfill_course(course_id)
+                    await self._backfill_course(course_id, cursors.get(course_id))
                 except Exception:
                     log.exception("Backfill failed for course %s", course_id)
 
-    async def _backfill_course(self, course_id):
+    async def _backfill_course(self, course_id, cursor):
         listed_at = store.now()
         threads = await asyncio.to_thread(lambda: list(server._iter_threads(course_id)))
-        cursor = store.get_cursor(self.conn, course_id)
         if cursor is None:
             store.advance_cursor(self.conn, course_id, listed_at)
             store.set_reply_counts(self.conn, course_id, {t["id"]: t["reply_count"] for t in threads}, listed_at)
@@ -314,9 +321,11 @@ class Listener:
         return True
 
     async def on_connect(self):
+        # Before any event of this connection is handled (see backfill).
+        cursors = self.cursors()
         await self.load_course_codes()
         # Run beside the stream so events keep flowing while it catches up.
-        asyncio.ensure_future(self._guarded(self.backfill()))
+        asyncio.ensure_future(self._guarded(self.backfill(cursors)))
 
     @staticmethod
     async def _guarded(coro):
