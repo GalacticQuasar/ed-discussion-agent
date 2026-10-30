@@ -134,6 +134,14 @@ def test_connection_error_becomes_tool_error(monkeypatch):
     assert excinfo.value.__cause__ is error
 
 
+def test_timeout_becomes_tool_error(monkeypatch):
+    FakeAuth(monkeypatch)
+    error = requests.ReadTimeout("Read timed out")
+    with pytest.raises(ToolError, match="Ed didn't answer within 30 s") as excinfo:
+        server._call(failing_with(error))
+    assert excinfo.value.__cause__ is error
+
+
 @pytest.mark.parametrize("status, hint", [
     (302, "redirected the request instead of answering; check ED_REGION"),
     (403, "no access: check the course_id with list_courses"),
@@ -175,6 +183,7 @@ def test_get_sends_static_token_to_region_api(monkeypatch, mocked_http):
 
     assert server._get("/courses/1") == {"course": {"id": 1}}
     assert mocked_http.calls[0].request.headers["Authorization"] == "Bearer static-token"
+    assert mocked_http.calls[0].request.req_kwargs["timeout"] == ed_api.TIMEOUT
 
 
 def test_get_with_rejected_static_token_does_not_log_in(monkeypatch, mocked_http):

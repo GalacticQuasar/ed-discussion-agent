@@ -19,6 +19,9 @@ import requests
 log = logging.getLogger(__name__)
 
 DEFAULT_REGION = "us"
+# Seconds to wait for Ed to connect or send data; without one, a stalled
+# request blocks its caller (a tool call, or the listener's backfill) forever.
+TIMEOUT = 30
 # Ed's original (Australian) region serves its API from the bare domain;
 # au.edstem.org only redirects to the homepage. Other regions use a subdomain.
 _API_HOSTS = {"au": "edstem.org"}
@@ -97,7 +100,7 @@ def get_auth_token():
         "password": os.getenv("ED_PASSWORD"),
     }
 
-    response = requests.post(f"{api_base()}/token", json=payload, allow_redirects=False)
+    response = requests.post(f"{api_base()}/token", json=payload, allow_redirects=False, timeout=TIMEOUT)
 
     if response.status_code == 200:
         return response.json().get("token")
@@ -135,6 +138,7 @@ def _authed_get(url, token, headers=None, **kwargs):
     host does (to the homepage), which would otherwise surface as a JSON error.
     """
     headers = {**(headers or {}), "Authorization": f"Bearer {token}"}
+    kwargs.setdefault("timeout", TIMEOUT)
     response = requests.get(url, headers=headers, allow_redirects=False, **kwargs)
     if not 200 <= response.status_code < 300:
         raise EdAPIError.from_response(f"GET {url} failed", response)

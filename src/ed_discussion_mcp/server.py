@@ -95,6 +95,8 @@ def _call(fn):
     # ToolError (unlike other exceptions) shows its message to the model.
     except (ed_api.MissingCredentialsError, ed_api.InvalidRegionError) as e:
         raise ToolError(str(e)) from e
+    except requests.Timeout as e:
+        raise ToolError(f"Ed didn't answer within {ed_api.TIMEOUT} s ({e}). Try again later.") from e
     except requests.ConnectionError as e:
         raise ToolError(f"Could not reach Ed ({e}). Check your connection and ED_REGION.") from e
     except ed_api.EdAPIError as e:

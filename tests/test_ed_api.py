@@ -30,6 +30,7 @@ def test_email_password_logs_in(monkeypatch, mocked_http):
 
     assert ed_api.get_token() == ("login-token", True)
     assert json.loads(mocked_http.calls[0].request.body) == {"login": "me@example.com", "password": "hunter2"}
+    assert mocked_http.calls[0].request.req_kwargs["timeout"] == ed_api.TIMEOUT
 
 
 def test_login_uses_region_host(monkeypatch, mocked_http):
