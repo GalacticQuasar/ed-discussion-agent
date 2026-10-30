@@ -223,7 +223,10 @@ class Listener:
             judge.score, event["post"], [(r["id"], r["instructions"]) for r in rules], event["parent"]
         )
         store.record_judgments(self.conn, event["key"], scores, judge.model(), self.title(event), event["url"])
-        matched = [r for r in rules if scores[r["id"]] >= judge.threshold(r)]
+        # Rules read again: while this post was scored, another may have fired a
+        # "once" rule, or the user deleted one. No await from here to record_match.
+        enabled = {r["id"] for r in store.list_rules(self.conn, enabled_only=True)}
+        matched = [r for r in rules if r["id"] in enabled and scores[r["id"]] >= judge.threshold(r)]
         log.info("%s scored %s", event["key"], {r: round(s, 2) for r, s in scores.items()})
         if not matched:
             return

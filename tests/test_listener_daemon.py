@@ -157,6 +157,29 @@ def test_once_rule_is_disabled_after_its_first_match(conn, ed, scores, sent):
     assert store.get_rule(conn, rule["id"])["fired_at"]
 
 
+def test_once_rule_fires_once_when_two_posts_are_scored_at_the_same_time(conn, ed, scores, sent, monkeypatch):
+    rule = add_rule(conn, "week 7 recording", mode="once")
+    ed.threads[1] = staff_thread(1, "Week 7 recording")
+    ed.threads[2] = staff_thread(2, "Week 7 recording (again)")
+    scores.table[("Week 7 recording", rule["id"])] = scores.table[("Week 7 recording (again)", rule["id"])] = 0.99
+    both_scoring = threading.Barrier(2, timeout=5)
+    score = judge.score
+
+    def score_together(*args):
+        both_scoring.wait()
+        return score(*args)
+
+    monkeypatch.setattr(judge, "score", score_together)
+    lis = listener(conn)
+
+    async def both():
+        await asyncio.gather(lis.on_thread(1), lis.on_thread(2))
+
+    run(both())
+
+    assert len(sent.items) == 1
+
+
 def test_staff_only_rules_skip_student_posts_without_scoring(conn, ed, scores, sent):
     add_rule(conn, staff_only=True)
     ed.threads[1] = make_thread(1, title="Will HW3 be extended?")
