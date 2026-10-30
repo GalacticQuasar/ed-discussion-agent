@@ -307,6 +307,20 @@ def test_a_live_thread_during_backfill_doesnt_hide_missed_threads(conn, ed, scor
     assert sorted(c["post"]["title"] for c in scores.calls) == ["Live", "Missed"]
 
 
+def test_connect_survives_failing_to_load_course_codes(conn, ed, scores, sent, monkeypatch):
+    def unreachable(fn):
+        raise ToolError("Could not reach Ed")
+
+    monkeypatch.setattr(daemon.server, "_call", unreachable)
+
+    async def connect():
+        lis = listener(conn)
+        await lis.on_connect()
+        return lis
+
+    assert run(connect()).course_codes == {COURSE: "CS 101"}
+
+
 def ed_error(status):
     """What server._get raises for an Ed error status."""
     try:

@@ -323,7 +323,11 @@ class Listener:
     async def on_connect(self):
         # Before any event of this connection is handled (see backfill).
         cursors = self.cursors()
-        await self.load_course_codes()
+        try:
+            await self.load_course_codes()
+        except Exception as e:
+            # Codes only label notifications; an Ed hiccup here mustn't stop the stream.
+            log.warning("Couldn't load course codes (%s); keeping the previous ones", e)
         # Run beside the stream so events keep flowing while it catches up.
         asyncio.ensure_future(self._guarded(self.backfill(cursors)))
 
