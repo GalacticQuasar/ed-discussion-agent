@@ -70,9 +70,11 @@ Your token goes in your client's own config file on your machine. Don't put it i
 <summary><b>Claude Code</b></summary>
 
 ```bash
-claude mcp add ed-discussion --scope user -e ED_API_TOKEN=your_token -- \
+claude mcp add ed-discussion -e ED_API_TOKEN=your_token -- \
   uvx ed-discussion-mcp
 ```
+
+This adds the server only for the current project. To use it in every project, add `--scope user`. Avoid `--scope project`: it writes the config, token included, to `.mcp.json` in the project, which is usually committed.
 </details>
 
 <details>
