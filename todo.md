@@ -9,9 +9,17 @@
     - Not yet covered: `get_courses` dashboard sorting and `http_transport`
 - Real-time new post stream over Ed's websocket (now `listener/stream.py`; `experiments/watch_posts.py` still uses it)
 - Semantic event listener (0.2.0): rule tools behind `ED_LISTENER=1`, `ed-discussion-mcp listen` daemon with System One judging, backfill, retries and ntfy (plan and findings below)
+- Claude Desktop extension (`mcpb/`, attached to the v0.2.1 GitHub release): one-click install for students, with the token and region asked for in the install form
+    - Server type `uv`; tested on Windows with uv already installed (Claude Desktop used it)
+    - Auto mode's permission classifier blocks the read-only tools inconsistently (an Allow once prompt only after three blocks in a row; reported via `/feedback`), so the manifest and README tell users to set the tools to Always allow
 
 ## Next
 - Listener known gaps (see "Known gaps" in the plan below)
+- Claude Desktop extension follow-ups
+    - Test installing it with no uv on the machine: does Claude Desktop download its own? (The README tells users to install uv if it fails.)
+    - Add an icon (512×512 PNG in `mcpb/`, referenced from the manifest)
+    - Anthropic's directory no longer takes `.mcpb` files; listing it there would mean wrapping the server in a plugin
+    - Recheck whether auto mode still blocks the tools, and drop the Always allow note if it stops
 - Semantic retrieval of threads in a course
     - Embed threads and index them locally; keyword search via Ed already exists
     - Could become an MCP tool (adding a tool changes the server's public interface)

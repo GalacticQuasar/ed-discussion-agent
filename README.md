@@ -74,11 +74,13 @@ Most MCP clients accept this standard config. Put your token in place of `your_t
     "ed-discussion": {
       "command": "uvx",
       "args": ["ed-discussion-mcp"],
-      "env": { "ED_API_TOKEN": "your_token" }
+      "env": { "ED_API_TOKEN": "your_token", "ED_REGION": "us" }
     }
   }
 }
 ```
+
+Set `ED_REGION` to the part after `edstem.org/` in your Ed address (`us`, `au` or `eu`). In the commands below, add it the same way as the token, e.g. `-e ED_REGION=au`; it can be left out for `us`.
 
 Your token goes in your client's own config file on your machine. Don't put it in a file you commit or share.
 
@@ -146,6 +148,10 @@ env = { ED_API_TOKEN = "your_token" }
 </details>
 
 **Other clients:** any client that can launch a local MCP server works. Give it the `uvx` command and arguments from the standard config, with `ED_API_TOKEN` set in its environment. For clients that only connect to servers over HTTP, see [HTTP mode](#http-mode).
+
+**Check that it works:** restart your client and ask "list my Ed courses".
+
+**If the server doesn't start** or the client can't find `uvx`: apps opened from the Dock, Start menu or a desktop shortcut don't always see the same PATH as your terminal. Use the full path to `uvx` as the command instead. To find it, run `which uvx` (macOS/Linux) or `where.exe uvx` (Windows) in a terminal, then put the result in place of `"uvx"` in your config, e.g. `"command": "/Users/you/.local/bin/uvx"`. On Windows, write the backslashes in JSON as `\\`.
 
 ### Configuration
 
