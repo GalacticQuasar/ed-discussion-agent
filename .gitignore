@@ -5,3 +5,5 @@
 __pycache__/
 # Build output
 dist/
+# Created by running the extension locally; .mcpbignore keeps it out of the bundle
+mcpb/uv.lock

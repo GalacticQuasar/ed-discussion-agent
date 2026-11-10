@@ -33,7 +33,23 @@ With `ED_LISTENER=1`, five more tools set up and review [notifications](#notific
 
 ## Setup
 
-### 1. Install uv
+### Claude Desktop: install the extension
+
+The easiest way, with no terminal or config files:
+
+1. Create an Ed API token at [edstem.org/us/settings/api-tokens](https://edstem.org/us/settings/api-tokens) (use your own region in place of `us`), and copy it.
+2. Download `ed-discussion-X.Y.Z.mcpb` from the [latest release](https://github.com/GalacticQuasar/ed-discussion-agent/releases/latest).
+3. Double-click the file, or drag it onto the Claude Desktop window. Paste your token when asked, and change the region if your Ed address isn't `edstem.org/us/...`.
+4. **Important:** open Settings → Desktop app → Extensions → Ed Discussion (Settings → Extensions in older versions) and set its tools to **Always allow**. Otherwise Claude asks before every lookup, and auto mode may block the tools. Every tool only reads from Ed.
+5. Start a new chat and ask "list my Ed courses".
+
+The first start can take a minute while Claude Desktop installs the server. If the extension fails to install or start, make sure [uv is installed](#1-install-uv), then restart Claude Desktop.
+
+### Other clients
+
+For Claude Code, Cursor, VS Code, Codex and other MCP clients, or to set up Claude Desktop without the extension:
+
+#### 1. Install uv
 
 The server runs with [uv](https://docs.astral.sh/uv/getting-started/installation/)'s `uvx`, which downloads [`ed-discussion-mcp` from PyPI](https://pypi.org/project/ed-discussion-mcp/) and runs it in an isolated environment; there is nothing else to install.
 
@@ -44,11 +60,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 2. Create an Ed API token
+#### 2. Create an Ed API token
 
 Go to [edstem.org/us/settings/api-tokens](https://edstem.org/us/settings/api-tokens) (use your own region in place of `us`), create a token, and copy it.
 
-### 3. Add the server to your client
+#### 3. Add the server to your client
 
 Most MCP clients accept this standard config. Put your token in place of `your_token`:
 
@@ -80,7 +96,7 @@ This adds the server only for the current project. To use it in every project, a
 <details>
 <summary><b>Claude Desktop</b></summary>
 
-Open Settings → Developer → Edit Config, add the standard config to `claude_desktop_config.json`, and restart Claude Desktop.
+Use the [extension](#claude-desktop-install-the-extension) unless you need [notifications](#notifications-experimental) or your organization has turned off extensions. To set it up by hand, open Settings → Developer → Edit Config, add the standard config to `claude_desktop_config.json`, and restart Claude Desktop.
 </details>
 
 <details>
@@ -243,6 +259,7 @@ ED_API_TOKEN=your_api_token
 
 - `uv run --env-file .env ed-discussion-mcp` runs the server from your working copy. Claude Code does this automatically through `.mcp.json` when you open the repo (approve the server when prompted).
 - `uvx --no-cache --from . ed-discussion-mcp` runs it the way users will, from a fresh build. `--no-cache` matters here: without it, uvx reuses its first build of the local package even after you change the code.
+- `mcpb/` holds the Claude Desktop extension, which installs the published package from PyPI. `npx @anthropic-ai/mcpb pack mcpb dist/ed-discussion-X.Y.Z.mcpb` builds it.
 
 - `uv run --env-file .env ed-discussion-mcp listen` runs the notification listener. Set `ED_LISTENER_DB` to a scratch file to keep test runs out of your real rules.
 

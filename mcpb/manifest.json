@@ -1,0 +1,61 @@
+{
+  "manifest_version": "0.4",
+  "name": "ed-discussion",
+  "display_name": "Ed Discussion",
+  "version": "0.2.1",
+  "description": "Search and read your Ed Discussion (edstem.org) courses. Read-only: it never posts to Ed.",
+  "long_description": "IMPORTANT: After installing, open Settings → Desktop app → Extensions → Ed Discussion and set its tools to Always allow. Otherwise Claude asks before every lookup, and auto mode may block the tools. Every tool only reads from Ed.\n\nLets Claude search and read the Ed Discussion courses you're enrolled in, so you can ask things like \"When is the midterm, and has the room changed?\" or \"Was the HW3 deadline extended?\". It runs on your computer and signs in with your own Ed API token, which is sent only to Ed. It only reads from Ed: it never posts, edits or reacts.",
+  "author": {
+    "name": "GalacticQuasar",
+    "url": "https://github.com/GalacticQuasar"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GalacticQuasar/ed-discussion-agent"
+  },
+  "homepage": "https://github.com/GalacticQuasar/ed-discussion-agent",
+  "support": "https://github.com/GalacticQuasar/ed-discussion-agent/issues",
+  "server": {
+    "type": "uv",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "env": {
+        "ED_API_TOKEN": "${user_config.ed_api_token}",
+        "ED_REGION": "${user_config.ed_region}"
+      }
+    }
+  },
+  "tools": [
+    {"name": "list_courses", "description": "Your courses in Ed dashboard order"},
+    {"name": "course_overview", "description": "A course's categories, pinned threads, recent announcements and recent threads"},
+    {"name": "search_threads", "description": "Keyword search using Ed's own search"},
+    {"name": "list_threads", "description": "Newest threads, filtered by category, type, pinned, staff author or date"},
+    {"name": "get_thread", "description": "A full thread with its answers and comments"}
+  ],
+  "user_config": {
+    "ed_api_token": {
+      "type": "string",
+      "title": "Ed API token",
+      "description": "In Ed, open your profile menu → Settings → API Tokens (edstem.org/us/settings/api-tokens), create a token, and paste it here.",
+      "sensitive": true,
+      "required": true
+    },
+    "ed_region": {
+      "type": "string",
+      "title": "Ed region",
+      "description": "The part after edstem.org/ in your Ed address: us, au or eu. Leave it as us if you're not sure.",
+      "default": "us",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "keywords": ["ed", "edstem", "ed discussion", "course", "forum", "education"],
+  "license": "MIT"
+}

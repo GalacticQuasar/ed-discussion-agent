@@ -1,0 +1,7 @@
+# Dependencies for the Claude Desktop extension. Claude Desktop installs them with uv
+# when the extension starts; keep the pin in step with manifest.json's "version".
+[project]
+name = "ed-discussion-mcpb"
+version = "0.2.1"
+requires-python = ">=3.10"
+dependencies = ["ed-discussion-mcp==0.2.1"]
